@@ -56,18 +56,6 @@ if "is_analyzing" not in st.session_state:
 # Función principal de análisis
 # ---------------------------------------------------------------------------
 
-def run_analysis(pdf_path: str):
-    """Ejecuta el grafo de análisis completo."""
-    initial_state = {
-        "pdf_path": pdf_path,
-        "errors": [],
-        "retry_count": 0,
-    }
-
-    result = cv_analysis_graph.invoke(initial_state)
-    return result
-
-
 # ---------------------------------------------------------------------------
 # UI: Página de carga
 # ---------------------------------------------------------------------------
@@ -110,17 +98,51 @@ def render_upload_page():
                     tmp_file.write(uploaded_file.getvalue())
                     tmp_path = tmp_file.name
 
+                # Variables para progreso
+                progress_bar = st.progress(0)
+                
+                # Nombres amigables y porcentajes para cada paso
+                step_mapping = {
+                    "intake": (10, "📥 Validando y extrayendo texto del PDF..."),
+                    "extraction": (25, "📄 Analizando y estructurando datos con IA..."),
+                    "job_search": (50, "🔍 Buscando ofertas laborales en el mercado (puede tardar un momento)..."),
+                    "requirements_analysis": (65, "📊 Analizando tendencias y requisitos requeridos..."),
+                    "gap_detection": (80, "🎯 Detectando brechas y comparando perfil..."),
+                    "recommendations": (90, "💡 Generando plan de recomendaciones..."),
+                    "report_generation": (98, "📝 Construyendo el informe final..."),
+                    "error_handler": (100, "❌ Error en el proceso...")
+                }
+
                 # Ejecutar análisis con status
                 with st.status(
-                    "🔄 Analizando tu CV...", expanded=True
+                    "🔄 Iniciando análisis inteligente...", expanded=True
                 ) as status:
-                    st.write("📥 Validando y extrayendo texto del PDF...")
                     try:
-                        result = run_analysis(tmp_path)
+                        initial_state = {
+                            "pdf_path": tmp_path,
+                            "errors": [],
+                            "retry_count": 0,
+                        }
+                        
+                        final_state = None
+                        
+                        # Streaming del grafo para actualizar en tiempo real
+                        for current_state in cv_analysis_graph.stream(initial_state, stream_mode="values"):
+                            final_state = current_state
+                            step = current_state.get("current_step", "")
+                            
+                            if step in step_mapping:
+                                pct, msg = step_mapping[step]
+                                progress_bar.progress(pct)
+                                status.update(label=msg)
+                                st.write(msg)
 
-                        # Actualizar status
+                        result = final_state
+
+                        # Actualizar status final
                         errors = result.get("errors", [])
                         if errors and not result.get("final_report", {}).get("matching_score"):
+                            progress_bar.progress(100)
                             status.update(
                                 label="❌ Error en el análisis",
                                 state="error",
@@ -128,13 +150,15 @@ def render_upload_page():
                             for error in errors:
                                 st.error(error)
                         else:
+                            progress_bar.progress(100)
                             status.update(
-                                label="✅ Análisis completado",
+                                label="✅ Análisis completado con éxito",
                                 state="complete",
                             )
                             st.session_state.analysis_result = result
 
                     except Exception as e:
+                        progress_bar.progress(100)
                         status.update(
                             label="❌ Error inesperado",
                             state="error",
