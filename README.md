@@ -16,7 +16,7 @@ CV Analyzer es un sistema multi-agente orquestado con **LangGraph** que automati
 4. **Análisis de Requisitos:** Analiza qué competencias son más frecuentes en el mercado actual para ese rol.
 5. **Detección de Brechas:** Calcula el porcentaje de alineación y detecta habilidades faltantes.
 6. **Recomendaciones:** Genera un plan de acción personalizado.
-7. **Reporte:** Muestra un informe final interactivo.
+7. **Reporte y Exportación:** Muestra un informe final interactivo con opción de descarga en PDF.
 
 ## 🛠️ Tecnologías
 
@@ -28,6 +28,7 @@ CV Analyzer es un sistema multi-agente orquestado con **LangGraph** que automati
 | Web Scraping | **Playwright** (Asíncrono) |
 | Frontend | **Streamlit** |
 | Modelos de Datos | **Pydantic v2** |
+| Exportación PDF | **fpdf2** |
 
 ## 🚀 Instalación
 

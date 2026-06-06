@@ -229,12 +229,38 @@ def render_report_page():
     # Header
     render_header()
 
-    # Botón para nuevo análisis
-    col_back, col_spacer = st.columns([1, 4])
+    # Botones superiores
+    col_back, col_spacer, col_download = st.columns([1, 3, 1])
     with col_back:
         if st.button("← Nuevo análisis"):
             st.session_state.analysis_result = None
+            if "last_pdf_generated" in st.session_state:
+                del st.session_state["last_pdf_generated"]
             st.rerun()
+
+    with col_download:
+        from src.tools.pdf_generator import generate_pdf_report
+        
+        pdf_path = os.path.join(tempfile.gettempdir(), "reporte_empleabilidad.pdf")
+        
+        # Generar PDF solo si no se generó ya para esta sesión
+        if not st.session_state.get("last_pdf_generated"):
+            try:
+                generate_pdf_report(report, pdf_path)
+                st.session_state["last_pdf_generated"] = True
+            except Exception as e:
+                st.error(f"Error generando PDF: {e}")
+                
+        if os.path.exists(pdf_path):
+            with open(pdf_path, "rb") as f:
+                st.download_button(
+                    label="📥 Descargar PDF",
+                    data=f.read(),
+                    file_name="Reporte_Empleabilidad_CV.pdf",
+                    mime="application/pdf",
+                    type="primary",
+                    use_container_width=True
+                )
 
     st.markdown("<hr class='section-divider'>", unsafe_allow_html=True)
 
