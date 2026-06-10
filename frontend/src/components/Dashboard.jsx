@@ -1,5 +1,7 @@
 import { Download, RotateCcw, Target, Briefcase, AlertCircle, Lightbulb, CheckCircle2 } from 'lucide-react'
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
 export default function Dashboard({ data, jobId, onReset }) {
   const { 
     cv_summary, 
@@ -16,7 +18,7 @@ export default function Dashboard({ data, jobId, onReset }) {
   const scorePercentage = Math.round((matching_score || 0) * 100)
 
   const handleDownload = () => {
-    window.open(`http://localhost:8000/api/report/${jobId}/pdf`, '_blank')
+    window.open(`${API_URL}/api/report/${jobId}/pdf`, '_blank')
   }
 
   return (

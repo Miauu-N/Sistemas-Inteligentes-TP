@@ -3,6 +3,8 @@ import UploadSection from './components/UploadSection'
 import ProgressTracker from './components/ProgressTracker'
 import Dashboard from './components/Dashboard'
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
 function App() {
   const [appState, setAppState] = useState('idle') // idle, uploading, analyzing, completed, error
   const [jobId, setJobId] = useState(null)
@@ -19,7 +21,7 @@ function App() {
 
     try {
       // Usar la ruta de tu API backend
-      const res = await fetch('http://localhost:8000/api/analyze', {
+      const res = await fetch(`${API_URL}/api/analyze`, {
         method: 'POST',
         body: formData,
       })
@@ -39,7 +41,7 @@ function App() {
 
   useEffect(() => {
     if (appState === 'analyzing' && jobId) {
-      const eventSource = new EventSource(`http://localhost:8000/api/stream/${jobId}`)
+      const eventSource = new EventSource(`${API_URL}/api/stream/${jobId}`)
       
       eventSource.addEventListener('progress', (e) => {
         try {
@@ -55,7 +57,7 @@ function App() {
       eventSource.addEventListener('complete', async (e) => {
         eventSource.close()
         try {
-          const res = await fetch(`http://localhost:8000/api/report/${jobId}`)
+          const res = await fetch(`${API_URL}/api/report/${jobId}`)
           const data = await res.json()
           if (data.status === 'completed') {
             setReportData(data.report)
