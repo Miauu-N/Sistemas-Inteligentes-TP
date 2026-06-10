@@ -10,95 +10,127 @@ Trabajo Final Integrador — Seminario de Agentes Inteligentes y LLMs.
 
 CV Analyzer es un sistema multi-agente orquestado con **LangGraph** que automatiza el análisis del perfil profesional de un candidato contrastándolo con la demanda real del mercado laboral. El flujo incluye:
 
-1. **Recepción:** Recibe un CV en formato PDF.
+1. **Recepción:** Recibe un CV en formato PDF a través de la API REST.
 2. **Extracción (LLM):** Extrae información estructurada (habilidades, tecnologías, experiencia, educación).
-3. **Búsqueda de Empleo:** Consulta ofertas laborales relevantes en tiempo real.
+3. **Búsqueda de Empleo:** Consulta ofertas laborales reales en Computrabajo en tiempo real.
 4. **Análisis de Requisitos:** Analiza qué competencias son más frecuentes en el mercado actual para ese rol.
 5. **Detección de Brechas:** Calcula el porcentaje de alineación y detecta habilidades faltantes.
 6. **Recomendaciones:** Genera un plan de acción personalizado.
-7. **Reporte y Exportación:** Muestra un informe final interactivo con opción de descarga en PDF.
+7. **Reporte y Exportación:** Envía estados intermedios al frontend vía Server-Sent Events (SSE) y permite visualizar un reporte premium interactivo con descarga a PDF.
 
-## 🛠️ Tecnologías
+## 🛠️ Tecnologías y Arquitectura
 
-| Componente | Tecnología |
-|:---|:---|
-| Orquestación | **LangGraph** |
-| LLM | **Google Gemini** (`gemini-3.1-flash-lite`) |
-| PDF Extraction | **PyMuPDF** |
-| Web Scraping | **Playwright** (Asíncrono) |
-| Frontend | **Streamlit** |
-| Modelos de Datos | **Pydantic v2** |
-| Exportación PDF | **fpdf2** |
+El proyecto está dividido en dos partes principales:
 
-## 🚀 Instalación
+### ⚙️ Backend (Python + FastAPI)
+* **Orquestación:** LangGraph (`StateGraph` con estado compartido y condicionales).
+* **LLM:** Google Gemini (`gemini-3.5-flash`).
+* **PDF Extraction:** PyMuPDF (`fitz`).
+* **Web Scraping:** Playwright (ejecutado asíncronamente).
+* **Framework Web:** FastAPI (endpoints REST para análisis, reportes y SSE).
+* **Exportación PDF:** fpdf2 (con sanitización Unicode).
+
+### 🎨 Frontend (React + Vite)
+* **Framework / Bundler:** React 19 + Vite.
+* **Estilos:** Tailwind CSS v4 con un diseño moderno de tipo *Glassmorphism* (oscuro y traslúcido).
+* **Iconos:** Lucide React.
+* **Streaming de Estado:** Consumidor nativo de SSE para mostrar una barra de progreso fluida en tiempo real.
+
+---
+
+## 🚀 Instalación y Uso
 
 ### 1. Clonar el repositorio
-
 ```bash
 git clone https://github.com/tu-usuario/Sistemas-Inteligentes-TP.git
 cd Sistemas-Inteligentes-TP
 ```
 
-### 2. Crear entorno virtual
+### 2. Configurar el Backend
 
-```bash
-python -m venv venv
-venv\Scripts\activate  # Windows
-# source venv/bin/activate  # Linux/Mac
-```
+1. Crear y activar el entorno virtual de Python:
+   ```bash
+   python -m venv venv
+   # En Windows:
+   venv\Scripts\activate
+   # En Linux/Mac:
+   # source venv/bin/activate
+   ```
+2. Instalar dependencias de Python:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Instalar navegadores para Playwright (Scraping):
+   ```bash
+   playwright install chromium
+   ```
+4. Configurar variables de entorno:
+   Copia el archivo `.env.example` como `.env`:
+   ```bash
+   copy .env.example .env
+   ```
+   Edítalo y agrega tu API Key de Google Gemini:
+   ```env
+   GOOGLE_API_KEY=tu_api_key_aquí
+   ```
+   *(Obtené tu API key gratis en: [Google AI Studio](https://aistudio.google.com/))*
 
-### 3. Instalar dependencias
+5. Iniciar la API de desarrollo de FastAPI:
+   ```bash
+   uvicorn src.api.main:app --reload
+   ```
+   La documentación interactiva estará disponible en `http://127.0.0.1:8000/docs`.
 
-```bash
-pip install -r requirements.txt
-```
+### 3. Configurar el Frontend
 
-### 4. Instalar navegadores para Playwright (Scraping)
+1. Dirigirte al directorio `frontend`:
+   ```bash
+   cd frontend
+   ```
+2. Instalar dependencias de Node.js:
+   ```bash
+   npm install
+   ```
+3. Iniciar el servidor de desarrollo de Vite:
+   ```bash
+   npm run dev
+   ```
+   El frontend estará accesible en `http://localhost:5173/`.
 
-```bash
-playwright install chromium
-```
-
-### 5. Configurar variables de entorno
-
-Copiar el archivo de ejemplo y configurar la API Key:
-```bash
-copy .env.example .env
-```
-
-Editar `.env` y agregar tu API key de Google Gemini:
-```env
-GOOGLE_API_KEY=tu_api_key_aquí
-```
-> Si no tenés una, podés obtenerla gratis en: [Google AI Studio](https://aistudio.google.com/)
-
-### 6. Ejecutar la aplicación
-
-```bash
-streamlit run app.py
-```
+---
 
 ## 📁 Estructura del Proyecto
 
 ```
-├── app.py                      # Punto de entrada de la UI (Streamlit)
-├── requirements.txt
-├── .env.example
-├── src/
+├── requirements.txt            # Dependencias del backend
+├── .env.example                # Variables de entorno
+├── src/                        # Código del backend
+│   ├── api/                    # Endpoints FastAPI y SSE
+│   │   └── main.py             # Servidor API
 │   ├── config/settings.py      # Configuración centralizada
-│   ├── models/                 # Schemas de validación (Pydantic)
+│   ├── models/                 # Esquemas de validación (Pydantic v2)
 │   ├── graph/                  # Orquestación LangGraph
 │   │   ├── state.py            # TypedDict de estado global
-│   │   ├── builder.py          # Definición de topología y edges
-│   │   └── nodes/              # Nodos del flujo (intake, extraction, etc.)
-│   ├── tools/                  # Funciones de soporte (PDF, LLM, Scraping)
-│   ├── prompts/                # Ingeniería de prompts
-│   └── ui/                     # Componentes y estilos de Streamlit
+│   │   ├── builder.py          # Topología del grafo
+│   │   └── nodes/              # Nodos individuales del flujo
+│   ├── tools/                  # Herramientas (LLM, PDF, Scraping)
+│   └── prompts/                # Ingeniería de prompts
+└── frontend/                   # Código de React (Vite + Tailwind v4)
+    ├── package.json
+    ├── tailwind.config.js
+    ├── index.html
+    └── src/
+        ├── main.jsx
+        ├── App.jsx             # Orquestación de estados y cliente SSE
+        ├── index.css           # Estilos base y tokens Tailwind
+        └── components/         # UploadSection, ProgressTracker, Dashboard, etc.
 ```
+
+---
 
 ## 🏗️ Arquitectura del Grafo
 
-El núcleo del sistema es un grafo de estados dirigido (`StateGraph`) implementado con LangGraph:
+El flujo de procesamiento del currículum se compone de la siguiente topología de nodos y aristas:
 
 ```mermaid
 graph TD;
@@ -115,8 +147,8 @@ graph TD;
     error_handler-->END;
 ```
 
-Cada nodo actualiza un estado global tipado (`CVAnalysisState`) que fluye a través del pipeline.
+---
 
 ## 📄 Licencia
 
-Proyecto académico creado para el Seminario de Agentes Inteligentes y LLMs.
+Proyecto académico desarrollado como Trabajo Final Integrador para el **Seminario de Agentes Inteligentes y LLMs**.
