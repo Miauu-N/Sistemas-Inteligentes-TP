@@ -10,11 +10,12 @@ function App() {
   const [progressMsg, setProgressMsg] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
 
-  const handleUpload = async (file) => {
+  const handleUpload = async (file, platforms) => {
     setAppState('uploading')
     setErrorMsg('')
     const formData = new FormData()
     formData.append('file', file)
+    formData.append('platforms', JSON.stringify(platforms || ['computrabajo']))
 
     try {
       // Usar la ruta de tu API backend

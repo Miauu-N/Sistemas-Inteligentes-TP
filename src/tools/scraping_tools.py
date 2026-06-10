@@ -284,3 +284,338 @@ def get_mock_job_listings(job_title: str = "Desarrollador Python") -> list[JobLi
     ]
 
     return mock_data
+
+
+async def _scrape_indeed(query: str, max_pages: int = 1) -> list[dict]:
+    """
+    Scrapea Indeed Argentina buscando ofertas laborales.
+    """
+    from playwright.async_api import async_playwright
+
+    results = []
+    # Indeed usa q=query
+    url_query = query.replace(" ", "+")
+    url = f"https://ar.indeed.com/jobs?q={url_query}"
+
+    logger.info("Scrapeando Indeed: {}", url)
+
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            context = await browser.new_context(
+                user_agent=(
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/125.0.0.0 Safari/537.36"
+                )
+            )
+            page = await context.new_page()
+
+            for page_num in range(1, max_pages + 1):
+                start = (page_num - 1) * 10
+                page_url = url if page_num == 1 else f"{url}&start={start}"
+
+                try:
+                    await page.goto(page_url, wait_until="domcontentloaded", timeout=12000)
+
+                    # Esperar por los contenedores de Indeed
+                    await page.wait_for_selector(
+                        "div.job_seen_beacon, td.resultContent, .jobCard_mainContent",
+                        timeout=5000,
+                    )
+
+                    # Extraer ofertas
+                    listings = await page.evaluate("""
+                        () => {
+                            const items = document.querySelectorAll(
+                                'div.job_seen_beacon, td.resultContent'
+                            );
+                            return Array.from(items).map(item => {
+                                const titleEl = item.querySelector(
+                                    'h2.jobTitle a, h2.jobTitle span'
+                                );
+                                const companyEl = item.querySelector(
+                                    '[data-testid="company-name"], .companyName'
+                                );
+                                const descEl = item.querySelector(
+                                    '.job-snippet, .summary'
+                                );
+                                const urlEl = item.querySelector('h2.jobTitle a');
+                                return {
+                                    title: titleEl ? titleEl.textContent.trim() : '',
+                                    company: companyEl ? companyEl.textContent.trim() : '',
+                                    description: descEl ? descEl.textContent.trim() : '',
+                                    url: urlEl ? urlEl.href : '',
+                                };
+                            }).filter(item => item.title);
+                        }
+                    """)
+
+                    for listing in listings:
+                        listing["source_platform"] = "indeed"
+                        results.append(listing)
+
+                    logger.info(
+                        "Indeed Página {}: {} ofertas encontradas", page_num, len(listings)
+                    )
+
+                except Exception as e:
+                    logger.warning("Error en Indeed página {}: {}", page_num, e)
+
+                if page_num < max_pages:
+                    await asyncio.sleep(random.uniform(1.5, 3.0))
+
+            await browser.close()
+
+    except Exception as e:
+        logger.error("Error general en scraping de Indeed: {}", e)
+
+    return results
+
+
+def search_jobs_indeed(query: str, max_pages: int = 1) -> list[JobListing]:
+    """
+    Wrapper síncrono para el scraping de Indeed.
+    """
+    try:
+        raw_results = asyncio.run(_scrape_indeed(query, max_pages))
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            raw_results = loop.run_until_complete(
+                _scrape_indeed(query, max_pages)
+            )
+        finally:
+            loop.close()
+
+    listings = []
+    for raw in raw_results:
+        try:
+            listing = JobListing(
+                title=raw.get("title", "Sin título"),
+                company=raw.get("company", "Empresa no especificada"),
+                location=raw.get("location"),
+                modality=raw.get("modality"),
+                description=raw.get("description", ""),
+                source_url=raw.get("url", ""),
+                source_platform="indeed",
+            )
+            listings.append(listing)
+        except Exception as e:
+            logger.debug("Error parseando Indeed listing: {}", e)
+
+    logger.info(
+        "Scraping Indeed completado: {} ofertas válidas de '{}'",
+        len(listings),
+        query,
+    )
+    return listings
+
+
+async def _scrape_linkedin(query: str, max_pages: int = 1) -> list[dict]:
+    """
+    Scrapea LinkedIn público buscando ofertas laborales.
+    """
+    from playwright.async_api import async_playwright
+
+    url_query = query.replace(" ", "%20")
+    url = f"https://www.linkedin.com/jobs/search/?keywords={url_query}"
+
+    logger.info("Scrapeando LinkedIn: {}", url)
+
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            context = await browser.new_context(
+                user_agent=(
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/125.0.0.0 Safari/537.36"
+                )
+            )
+            page = await context.new_page()
+            await page.goto(url, wait_until="domcontentloaded", timeout=12000)
+
+            # Esperar por el contenedor de ofertas de LinkedIn
+            await page.wait_for_selector(
+                ".jobs-search__results-list, li.jobs-search-card",
+                timeout=5000,
+            )
+
+            listings = await page.evaluate("""
+                () => {
+                    const items = document.querySelectorAll(
+                        '.jobs-search__results-list > li, li.jobs-search-card'
+                    );
+                    return Array.from(items).map(item => {
+                        const titleEl = item.querySelector(
+                            '.base-search-card__title, .job-search-card__title'
+                        );
+                        const companyEl = item.querySelector(
+                            '.base-search-card__subtitle, .job-search-card__subtitle'
+                        );
+                        const urlEl = item.querySelector(
+                            'a.base-card__full-link, a.job-search-card__link'
+                        );
+                        return {
+                            title: titleEl ? titleEl.textContent.trim() : '',
+                            company: companyEl ? companyEl.textContent.trim() : '',
+                            description: 'Oferta de empleo en LinkedIn',
+                            url: urlEl ? urlEl.href : '',
+                        };
+                    }).filter(item => item.title);
+                }
+            """)
+
+            for listing in listings:
+                listing["source_platform"] = "linkedin"
+
+            await browser.close()
+            return listings
+
+    except Exception as e:
+        logger.warning("No se pudo scrapear LinkedIn en vivo (esperado debido a políticas anti-bot): {}", e)
+        return []
+
+
+def search_jobs_linkedin(query: str, max_pages: int = 1) -> list[JobListing]:
+    """
+    Wrapper síncrono para el scraping de LinkedIn.
+    """
+    try:
+        raw_results = asyncio.run(_scrape_linkedin(query, max_pages))
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            raw_results = loop.run_until_complete(
+                _scrape_linkedin(query, max_pages)
+            )
+        finally:
+            loop.close()
+
+    listings = []
+    for raw in raw_results:
+        try:
+            listing = JobListing(
+                title=raw.get("title", "Sin título"),
+                company=raw.get("company", "Empresa no especificada"),
+                location=raw.get("location"),
+                modality=raw.get("modality"),
+                description=raw.get("description", ""),
+                source_url=raw.get("url", ""),
+                source_platform="linkedin",
+            )
+            listings.append(listing)
+        except Exception as e:
+            logger.debug("Error parseando LinkedIn listing: {}", e)
+
+    logger.info(
+        "Scraping LinkedIn completado: {} ofertas válidas de '{}'",
+        len(listings),
+        query,
+    )
+    return listings
+
+
+async def _scrape_bumeran(query: str, max_pages: int = 1) -> list[dict]:
+    """
+    Scrapea Bumeran Argentina buscando ofertas laborales.
+    """
+    from playwright.async_api import async_playwright
+
+    url_query = query.lower().replace(" ", "-")
+    url = f"https://www.bumeran.com.ar/empleos-busqueda-{url_query}.html"
+
+    logger.info("Scrapeando Bumeran: {}", url)
+
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            context = await browser.new_context(
+                user_agent=(
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/125.0.0.0 Safari/537.36"
+                )
+            )
+            page = await context.new_page()
+            await page.goto(url, wait_until="domcontentloaded", timeout=12000)
+
+            # Esperar por los contenedores de Bumeran
+            await page.wait_for_selector(
+                "div[class*='JobCard'], div[class*='CardContainer'], a[class*='JobCard']",
+                timeout=5000,
+            )
+
+            listings = await page.evaluate("""
+                () => {
+                    const items = document.querySelectorAll(
+                        'div[class*="CardContainer"], a[class*="JobCard"], div[class*="JobCard"]'
+                    );
+                    return Array.from(items).map(item => {
+                        const titleEl = item.querySelector('h2, [class*="Title"], [class*="title"]');
+                        const companyEl = item.querySelector('[class*="Company"], [class*="Employer"], [class*="employer"]');
+                        const urlEl = item.tagName === 'A' ? item : item.querySelector('a');
+                        return {
+                            title: titleEl ? titleEl.textContent.trim() : '',
+                            company: companyEl ? companyEl.textContent.trim() : '',
+                            description: 'Oferta de empleo en Bumeran',
+                            url: urlEl ? urlEl.href : '',
+                        };
+                    }).filter(item => item.title);
+                }
+            """)
+
+            for listing in listings:
+                listing["source_platform"] = "bumeran"
+
+            await browser.close()
+            return listings
+
+    except Exception as e:
+        logger.warning("No se pudo scrapear Bumeran en vivo: {}", e)
+        return []
+
+
+def search_jobs_bumeran(query: str, max_pages: int = 1) -> list[JobListing]:
+    """
+    Wrapper síncrono para el scraping de Bumeran.
+    """
+    try:
+        raw_results = asyncio.run(_scrape_bumeran(query, max_pages))
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            raw_results = loop.run_until_complete(
+                _scrape_bumeran(query, max_pages)
+            )
+        finally:
+            loop.close()
+
+    listings = []
+    for raw in raw_results:
+        try:
+            listing = JobListing(
+                title=raw.get("title", "Sin título"),
+                company=raw.get("company", "Empresa no especificada"),
+                location=raw.get("location"),
+                modality=raw.get("modality"),
+                description=raw.get("description", ""),
+                source_url=raw.get("url", ""),
+                source_platform="bumeran",
+            )
+            listings.append(listing)
+        except Exception as e:
+            logger.debug("Error parseando Bumeran listing: {}", e)
+
+    logger.info(
+        "Scraping Bumeran completado: {} ofertas válidas de '{}'",
+        len(listings),
+        query,
+    )
+    return listings
+
+

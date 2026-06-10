@@ -5,7 +5,8 @@ import asyncio
 import json
 from typing import Dict, Any
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from loguru import logger
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from sse_starlette.sse import EventSourceResponse
@@ -33,7 +34,10 @@ jobs: Dict[str, Dict[str, Any]] = {}
 
 
 @app.post("/api/analyze")
-async def start_analysis(file: UploadFile = File(...)):
+async def start_analysis(
+    file: UploadFile = File(...),
+    platforms: str = Form(default='["computrabajo"]')
+):
     """
     Recibe un PDF, lo guarda temporalmente y devuelve un ID de trabajo (job_id) 
     para suscribirse al stream de progreso.
@@ -41,6 +45,18 @@ async def start_analysis(file: UploadFile = File(...)):
     if not file.filename.endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Solo se permiten archivos PDF")
         
+    # Procesar las plataformas
+    logger.info("Plataformas recibidas en la API: {}", platforms)
+    try:
+        parsed_platforms = json.loads(platforms)
+        if not isinstance(parsed_platforms, list):
+            parsed_platforms = [platforms]
+    except Exception:
+        # Fallback si se envía separado por comas o texto plano
+        parsed_platforms = [p.strip() for p in platforms.split(",") if p.strip()]
+        
+    logger.info("Plataformas procesadas: {}", parsed_platforms)
+    
     job_id = str(uuid.uuid4())
     
     # Guardar archivo temporal
@@ -50,6 +66,7 @@ async def start_analysis(file: UploadFile = File(...)):
         
     jobs[job_id] = {
         "pdf_path": path,
+        "platforms": parsed_platforms,
         "status": "pending",
         "result": None,
         "errors": []
@@ -81,6 +98,7 @@ async def stream_analysis(job_id: str):
     async def event_generator():
         initial_state = {
             "pdf_path": job["pdf_path"],
+            "platforms": job.get("platforms", ["computrabajo"]),
             "errors": [],
             "retry_count": 0,
         }

@@ -12,11 +12,22 @@ CV Analyzer es un sistema multi-agente orquestado con **LangGraph** que automati
 
 1. **Recepción:** Recibe un CV en formato PDF a través de la API REST.
 2. **Extracción (LLM):** Extrae información estructurada (habilidades, tecnologías, experiencia, educación).
-3. **Búsqueda de Empleo:** Consulta ofertas laborales reales en Computrabajo en tiempo real.
+3. **Búsqueda de Empleo:** Consulta ofertas laborales en tiempo real en múltiples portales seleccionables (Computrabajo, Indeed y LinkedIn).
 4. **Análisis de Requisitos:** Analiza qué competencias son más frecuentes en el mercado actual para ese rol.
 5. **Detección de Brechas:** Calcula el porcentaje de alineación y detecta habilidades faltantes.
 6. **Recomendaciones:** Genera un plan de acción personalizado.
 7. **Reporte y Exportación:** Envía estados intermedios al frontend vía Server-Sent Events (SSE) y permite visualizar un reporte premium interactivo con descarga a PDF.
+
+---
+
+## ✨ Características Destacadas
+
+* **Búsqueda Multi-Portal Seleccionable:** El usuario puede elegir y combinar en qué portales de empleo realizar la búsqueda de ofertas (**Computrabajo**, **Indeed** y/o **LinkedIn**) directamente desde los controles del frontend antes de lanzar el análisis.
+* **Manejo Inteligente de Anti-Bots (Modo Demo):** Si las solicitudes en tiempo real a portales protegidos (como Indeed o LinkedIn) fallan o son bloqueadas por protecciones de Cloudflare/Captcha, el sistema lo detecta e inyecta ofertas simuladas de referencia asociando el puesto y enlaces dinámicos del portal seleccionado. La interfaz despliega un banner explicativo tipo advertencia alertando sobre este estado.
+* **Actualizaciones en Tiempo Real (SSE):** Conectividad cliente-servidor nativa mediante Server-Sent Events para actualizar en vivo la barra de progreso de los agentes paso a paso.
+* **Descarga de Reporte PDF:** Generación integrada de informes PDF limpios listos para descargar y compartir.
+
+---
 
 ## 🛠️ Tecnologías y Arquitectura
 

@@ -23,6 +23,7 @@ class CVAnalysisState(TypedDict, total=False):
 
     # --- Entrada del usuario ---
     pdf_path: str  # Ruta al archivo PDF subido por el usuario
+    platforms: list[str]  # Plataformas seleccionadas para buscar ofertas (ej: ['computrabajo', 'indeed'])
 
     # --- Nodo: intake ---
     raw_text: str  # Texto crudo extraído del PDF

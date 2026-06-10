@@ -43,3 +43,6 @@ class JobListing(BaseModel):
     posted_date: str | None = Field(
         default=None, description="Fecha de publicación"
     )
+    is_mock: bool = Field(
+        default=False, description="Indica si es una oferta simulada/mock"
+    )

@@ -32,6 +32,20 @@ export default function Dashboard({ data, jobId, onReset }) {
         </button>
       </div>
 
+      {/* Demo Mode / Mock Warning Banner */}
+      {job_listings?.some(job => job.is_mock) && (
+        <div className="glass-card p-5 border-l-4 border-l-amber-500 bg-amber-500/10 text-amber-250 flex items-start gap-3 w-full animate-in fade-in slide-in-from-top-4 duration-500">
+          <AlertCircle className="w-6 h-6 text-amber-400 shrink-0 mt-0.5 animate-pulse" />
+          <div>
+            <h4 className="font-bold text-amber-300 text-lg">Modo Demo (Datos de Respaldo)</h4>
+            <p className="text-sm text-slate-350 leading-relaxed mt-1">
+              Las consultas en tiempo real a los portales seleccionados fallaron o fueron bloqueadas por protecciones anti-bot (ej. Cloudflare/Captcha). 
+              Para poder completar el análisis de tu perfil, el sistema cargó ofertas de referencia simuladas.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Summary Section */}
       <div className="glass-card p-6 md:p-8 border-l-4 border-l-primary">
         <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
