@@ -17,57 +17,6 @@ from loguru import logger
 from src.config.settings import settings
 from src.models.job_models import JobListing
 
-async def _launch_stealth_browser(p, user_agent=None):
-    """
-    Inicia una instancia de navegador Chromium con argumentos sigilosos
-    para evadir detecciones de automatización básicas en producción (como Cloudflare/Akamai).
-    """
-    if user_agent is None:
-        user_agent = (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/125.0.0.0 Safari/537.36"
-        )
-    
-    browser = await p.chromium.launch(
-        headless=True,
-        args=[
-            "--disable-blink-features=AutomationControlled",
-            "--disable-infobars",
-            "--no-sandbox",
-            "--disable-setuid-sandbox",
-            "--disable-dev-shm-usage",
-            "--disable-accelerated-2d-canvas",
-            "--disable-gpu",
-            "--window-size=1366,768",
-        ]
-    )
-    
-    context = await browser.new_context(
-        user_agent=user_agent,
-        viewport={"width": 1366, "height": 768},
-        locale="es-AR",
-        timezone_id="America/Argentina/Buenos_Aires",
-        extra_http_headers={
-            "Accept-Language": "es-AR,es;q=0.9,en;q=0.8",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
-            "Accept-Encoding": "gzip, deflate, br",
-            "Connection": "keep-alive",
-            "Upgrade-Insecure-Requests": "1",
-        }
-    )
-    
-    page = await context.new_page()
-    
-    # Ocultar navigator.webdriver
-    await page.add_init_script("""
-        Object.defineProperty(navigator, 'webdriver', {
-            get: () => undefined
-        });
-    """)
-    
-    return browser, context, page
-
 
 async def _scrape_computrabajo(query: str, max_pages: int = 2) -> list[dict]:
     """
@@ -93,7 +42,15 @@ async def _scrape_computrabajo(query: str, max_pages: int = 2) -> list[dict]:
 
     try:
         async with async_playwright() as p:
-            browser, context, page = await _launch_stealth_browser(p)
+            browser = await p.chromium.launch(headless=True)
+            context = await browser.new_context(
+                user_agent=(
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/125.0.0.0 Safari/537.36"
+                )
+            )
+            page = await context.new_page()
 
             for page_num in range(1, max_pages + 1):
                 page_url = url if page_num == 1 else f"{url}?p={page_num}"
@@ -344,7 +301,15 @@ async def _scrape_indeed(query: str, max_pages: int = 1) -> list[dict]:
 
     try:
         async with async_playwright() as p:
-            browser, context, page = await _launch_stealth_browser(p)
+            browser = await p.chromium.launch(headless=True)
+            context = await browser.new_context(
+                user_agent=(
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/125.0.0.0 Safari/537.36"
+                )
+            )
+            page = await context.new_page()
 
             for page_num in range(1, max_pages + 1):
                 start = (page_num - 1) * 10
@@ -455,26 +420,33 @@ async def _scrape_linkedin(query: str, max_pages: int = 1) -> list[dict]:
     from playwright.async_api import async_playwright
 
     url_query = query.replace(" ", "%20")
-    # Usar el endpoint de búsqueda guest/público de LinkedIn con menor protección de firewall
-    url = f"https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords={url_query}&location=Argentina"
+    url = f"https://www.linkedin.com/jobs/search/?keywords={url_query}"
 
     logger.info("Scrapeando LinkedIn: {}", url)
 
     try:
         async with async_playwright() as p:
-            browser, context, page = await _launch_stealth_browser(p)
+            browser = await p.chromium.launch(headless=True)
+            context = await browser.new_context(
+                user_agent=(
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/125.0.0.0 Safari/537.36"
+                )
+            )
+            page = await context.new_page()
             await page.goto(url, wait_until="domcontentloaded", timeout=12000)
 
             # Esperar por el contenedor de ofertas de LinkedIn
             await page.wait_for_selector(
-                ".jobs-search__results-list, li.jobs-search-card, .base-search-card",
+                ".jobs-search__results-list, li.jobs-search-card",
                 timeout=5000,
             )
 
             listings = await page.evaluate("""
                 () => {
                     const items = document.querySelectorAll(
-                        '.jobs-search__results-list > li, li.jobs-search-card, .base-search-card, li'
+                        '.jobs-search__results-list > li, li.jobs-search-card'
                     );
                     return Array.from(items).map(item => {
                         const titleEl = item.querySelector(
@@ -560,7 +532,15 @@ async def _scrape_bumeran(query: str, max_pages: int = 1) -> list[dict]:
 
     try:
         async with async_playwright() as p:
-            browser, context, page = await _launch_stealth_browser(p)
+            browser = await p.chromium.launch(headless=True)
+            context = await browser.new_context(
+                user_agent=(
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/125.0.0.0 Safari/537.36"
+                )
+            )
+            page = await context.new_page()
             await page.goto(url, wait_until="domcontentloaded", timeout=12000)
 
             # Esperar por los contenedores de Bumeran
