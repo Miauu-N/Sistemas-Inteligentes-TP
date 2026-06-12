@@ -21,9 +21,9 @@ export default function Dashboard({ data, jobId, onReset, onRescan, onToggleReco
     window.open(`${API_URL}/api/report/${jobId}/pdf`, '_blank')
   }
 
-  const handleRescanClick = () => {
+  const handleRescanClick = (mode) => {
     const usedPlatforms = Array.from(new Set(job_listings?.map(j => j.source_platform).filter(Boolean)))
-    onRescan(usedPlatforms.length > 0 ? usedPlatforms : ['computrabajo'])
+    onRescan(usedPlatforms.length > 0 ? usedPlatforms : ['computrabajo'], mode)
   }
 
   return (
@@ -35,12 +35,15 @@ export default function Dashboard({ data, jobId, onReset, onRescan, onToggleReco
           <RotateCcw className="w-4 h-4" /> Subir nuevo CV
         </button>
         
-        <div className="flex gap-3">
-          <button onClick={handleRescanClick} className="flex items-center gap-2 py-2 px-4 bg-slate-900 border border-slate-800 rounded-xl hover:bg-slate-850 hover:border-slate-700 text-white font-semibold transition-all text-sm cursor-pointer shadow-sm">
-            <RotateCcw className="w-4 h-4 text-blue-400" /> Re-escanear Vacantes
+        <div className="flex gap-3 flex-wrap">
+          <button onClick={() => handleRescanClick('scraping')} className="flex items-center gap-2 py-2 px-3 bg-slate-900 border border-slate-800 rounded-xl hover:bg-slate-850 hover:border-slate-700 text-white font-semibold transition-all text-xs cursor-pointer shadow-sm">
+            <RotateCcw className="w-3.5 h-3.5 text-blue-450" /> Re-escanear (Scraping)
           </button>
-          <button onClick={handleDownload} className="primary-btn flex items-center gap-2 text-sm">
-            <Download className="w-4 h-4" /> Descargar PDF
+          <button onClick={() => handleRescanClick('serpapi')} className="flex items-center gap-2 py-2 px-3 bg-slate-900 border border-slate-800 rounded-xl hover:bg-slate-850 hover:border-slate-700 text-white font-semibold transition-all text-xs cursor-pointer shadow-sm">
+            <RotateCcw className="w-3.5 h-3.5 text-blue-450" /> Re-escanear (SerpAPI)
+          </button>
+          <button onClick={handleDownload} className="primary-btn flex items-center gap-2 text-xs py-2 px-3">
+            <Download className="w-3.5 h-3.5" /> Descargar PDF
           </button>
         </div>
       </div>

@@ -98,6 +98,12 @@ class Settings(BaseSettings):
         description="Contraseña del proxy"
     )
 
+    # --- SerpAPI Configuration ---
+    serpapi_api_key: str = Field(
+        default="",
+        description="API Key para SerpAPI"
+    )
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",

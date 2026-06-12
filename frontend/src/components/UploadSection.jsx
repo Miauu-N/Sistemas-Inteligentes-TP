@@ -38,6 +38,7 @@ export default function UploadSection({ onUpload, isUploading }) {
   }
 
   const [platforms, setPlatforms] = useState(['computrabajo'])
+  const [searchMode, setSearchMode] = useState('scraping') // scraping o serpapi
 
   const handlePlatformChange = (platform) => {
     if (platforms.includes(platform)) {
@@ -51,7 +52,7 @@ export default function UploadSection({ onUpload, isUploading }) {
 
   const handleUploadClick = () => {
     if (selectedFile) {
-      onUpload(selectedFile, platforms)
+      onUpload(selectedFile, platforms, searchMode)
     }
   }
 
@@ -100,46 +101,82 @@ export default function UploadSection({ onUpload, isUploading }) {
             </button>
           </div>
           
-          {/* Platform selection */}
-          <div className="w-full mb-6">
-            <p className="text-sm font-semibold text-slate-350 mb-3 text-left w-full">Buscar ofertas en:</p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
-              <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer select-none transition-all
-                ${platforms.includes('computrabajo') ? 'border-primary bg-primary/10 text-white' : 'border-slate-700 bg-slate-800/20 hover:bg-slate-800/40 text-slate-400'}`}>
-                <input 
-                  type="checkbox" 
-                  checked={platforms.includes('computrabajo')} 
-                  onChange={() => handlePlatformChange('computrabajo')}
-                  disabled={isUploading}
-                  className="rounded border-slate-600 text-primary focus:ring-primary h-4 w-4 bg-slate-900"
-                />
-                <span className="font-semibold text-sm">Computrabajo</span>
-              </label>
-
-              <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer select-none transition-all
-                ${platforms.includes('indeed') ? 'border-primary bg-primary/10 text-white' : 'border-slate-700 bg-slate-800/20 hover:bg-slate-800/40 text-slate-400'}`}>
-                <input 
-                  type="checkbox" 
-                  checked={platforms.includes('indeed')} 
-                  onChange={() => handlePlatformChange('indeed')}
-                  disabled={isUploading}
-                  className="rounded border-slate-600 text-primary focus:ring-primary h-4 w-4 bg-slate-900"
-                />
-                <span className="font-semibold text-sm">Indeed</span>
-              </label>
-
-              <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer select-none transition-all
-                ${platforms.includes('linkedin') ? 'border-primary bg-primary/10 text-white' : 'border-slate-700 bg-slate-800/20 hover:bg-slate-800/40 text-slate-400'}`}>
-                <input 
-                  type="checkbox" 
-                  checked={platforms.includes('linkedin')} 
-                  onChange={() => handlePlatformChange('linkedin')}
-                  disabled={isUploading}
-                  className="rounded border-slate-600 text-primary focus:ring-primary h-4 w-4 bg-slate-900"
-                />
-                <span className="font-semibold text-sm">LinkedIn</span>
-              </label>
+          {/* Search Mode selection */}
+          <div className="w-full mb-6 text-left">
+            <p className="text-sm font-semibold text-slate-350 mb-3">Motor de Búsqueda de Vacantes:</p>
+            <div className="flex bg-slate-900/50 p-1 rounded-xl border border-slate-750 w-full mb-4">
+              <button
+                type="button"
+                onClick={() => setSearchMode('scraping')}
+                disabled={isUploading}
+                className={`flex-1 py-2 px-3 rounded-lg text-sm font-bold transition-all cursor-pointer ${
+                  searchMode === 'scraping' 
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' 
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                🕸️ Scraping Web
+              </button>
+              <button
+                type="button"
+                onClick={() => setSearchMode('serpapi')}
+                disabled={isUploading}
+                className={`flex-1 py-2 px-3 rounded-lg text-sm font-bold transition-all cursor-pointer ${
+                  searchMode === 'serpapi' 
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' 
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                🔍 SerpAPI (Google Jobs)
+              </button>
             </div>
+            
+            {searchMode === 'serpapi' ? (
+              <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl text-blue-300 text-xs leading-relaxed">
+                💡 Google Jobs unifica de forma transparente todas las ofertas de LinkedIn, Indeed, Computrabajo y cientos de portales, reduciendo drásticamente los bloqueos en producción.
+              </div>
+            ) : (
+              <div className="w-full">
+                <p className="text-sm font-semibold text-slate-350 mb-3 text-left w-full">Buscar ofertas en:</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+                  <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer select-none transition-all
+                    ${platforms.includes('computrabajo') ? 'border-primary bg-primary/10 text-white' : 'border-slate-700 bg-slate-800/20 hover:bg-slate-800/40 text-slate-400'}`}>
+                    <input 
+                      type="checkbox" 
+                      checked={platforms.includes('computrabajo')} 
+                      onChange={() => handlePlatformChange('computrabajo')}
+                      disabled={isUploading}
+                      className="rounded border-slate-600 text-primary focus:ring-primary h-4 w-4 bg-slate-900"
+                    />
+                    <span className="font-semibold text-sm">Computrabajo</span>
+                  </label>
+
+                  <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer select-none transition-all
+                    ${platforms.includes('indeed') ? 'border-primary bg-primary/10 text-white' : 'border-slate-700 bg-slate-800/20 hover:bg-slate-800/40 text-slate-400'}`}>
+                    <input 
+                      type="checkbox" 
+                      checked={platforms.includes('indeed')} 
+                      onChange={() => handlePlatformChange('indeed')}
+                      disabled={isUploading}
+                      className="rounded border-slate-600 text-primary focus:ring-primary h-4 w-4 bg-slate-900"
+                    />
+                    <span className="font-semibold text-sm">Indeed</span>
+                  </label>
+
+                  <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer select-none transition-all
+                    ${platforms.includes('linkedin') ? 'border-primary bg-primary/10 text-white' : 'border-slate-700 bg-slate-800/20 hover:bg-slate-800/40 text-slate-400'}`}>
+                    <input 
+                      type="checkbox" 
+                      checked={platforms.includes('linkedin')} 
+                      onChange={() => handlePlatformChange('linkedin')}
+                      disabled={isUploading}
+                      className="rounded border-slate-600 text-primary focus:ring-primary h-4 w-4 bg-slate-900"
+                    />
+                    <span className="font-semibold text-sm">LinkedIn</span>
+                  </label>
+                </div>
+              </div>
+            )}
           </div>
 
           <button 

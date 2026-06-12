@@ -17,12 +17,13 @@ function App() {
   const [errorMsg, setErrorMsg] = useState('')
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
-  const handleUpload = async (file, platforms) => {
+  const handleUpload = async (file, platforms, searchMode) => {
     setAppState('uploading')
     setErrorMsg('')
     const formData = new FormData()
     formData.append('file', file)
     formData.append('platforms', JSON.stringify(platforms || ['computrabajo']))
+    formData.append('search_mode', searchMode || 'scraping')
 
     try {
       const token = await getAccessTokenSilently()
@@ -135,7 +136,7 @@ function App() {
     checkExistingAnalysis()
   }, [isAuthenticated])
 
-  const handleRescan = async (platforms) => {
+  const handleRescan = async (platforms, searchMode) => {
     setAppState('uploading')
     setErrorMsg('')
     try {
@@ -146,7 +147,10 @@ function App() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ platforms: platforms || ['computrabajo'] })
+        body: JSON.stringify({ 
+          platforms: platforms || ['computrabajo'],
+          search_mode: searchMode || 'scraping'
+        })
       })
       if (!res.ok) {
         const errData = await res.json()

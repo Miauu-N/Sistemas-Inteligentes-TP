@@ -17,6 +17,7 @@ from src.tools.scraping_tools import (
     search_jobs_bumeran,
     get_mock_job_listings,
 )
+from src.tools.serpapi_tools import search_jobs_serpapi
 from src.config.settings import settings
 
 
@@ -62,32 +63,42 @@ def job_search_node(state: CVAnalysisState) -> dict:
         logger.warning("Error generando queries, usando fallback: {}", e)
         search_queries = cv_data.inferred_job_titles[:3] or ["developer"]
 
-    # Paso 2: Buscar ofertas en las plataformas seleccionadas
+    # Paso 2: Buscar ofertas en las plataformas seleccionadas o usando SerpAPI
     all_listings = []
-    if not platforms:
-        platforms = ["computrabajo"]
-
-    for query in search_queries[:3]:  # Limitar a 3 queries
-        for platform in platforms:
+    search_mode = state.get("search_mode", "scraping")
+    
+    if search_mode == "serpapi":
+        for query in search_queries[:3]:
             try:
-                if platform == "computrabajo":
-                    listings = search_jobs_computrabajo(query, max_pages=settings.max_search_pages)
-                    all_listings.extend(listings)
-                    logger.info("Computrabajo Query '{}': {} resultados", query, len(listings))
-                elif platform == "indeed":
-                    listings = search_jobs_indeed(query, max_pages=settings.max_search_pages)
-                    all_listings.extend(listings)
-                    logger.info("Indeed Query '{}': {} resultados", query, len(listings))
-                elif platform == "linkedin":
-                    listings = search_jobs_linkedin(query, max_pages=1)
-                    all_listings.extend(listings)
-                    logger.info("LinkedIn Query '{}': {} resultados", query, len(listings))
-                elif platform == "bumeran":
-                    listings = search_jobs_bumeran(query, max_pages=settings.max_search_pages)
-                    all_listings.extend(listings)
-                    logger.info("Bumeran Query '{}': {} resultados", query, len(listings))
+                listings = search_jobs_serpapi(query)
+                all_listings.extend(listings)
             except Exception as e:
-                logger.warning("Error scrapeando '{}' en '{}': {}", query, platform, e)
+                logger.error("Error buscando en SerpAPI para query '{}': {}", query, e)
+    else:
+        if not platforms:
+            platforms = ["computrabajo"]
+
+        for query in search_queries[:3]:  # Limitar a 3 queries
+            for platform in platforms:
+                try:
+                    if platform == "computrabajo":
+                        listings = search_jobs_computrabajo(query, max_pages=settings.max_search_pages)
+                        all_listings.extend(listings)
+                        logger.info("Computrabajo Query '{}': {} resultados", query, len(listings))
+                    elif platform == "indeed":
+                        listings = search_jobs_indeed(query, max_pages=settings.max_search_pages)
+                        all_listings.extend(listings)
+                        logger.info("Indeed Query '{}': {} resultados", query, len(listings))
+                    elif platform == "linkedin":
+                        listings = search_jobs_linkedin(query, max_pages=1)
+                        all_listings.extend(listings)
+                        logger.info("LinkedIn Query '{}': {} resultados", query, len(listings))
+                    elif platform == "bumeran":
+                        listings = search_jobs_bumeran(query, max_pages=settings.max_search_pages)
+                        all_listings.extend(listings)
+                        logger.info("Bumeran Query '{}': {} resultados", query, len(listings))
+                except Exception as e:
+                    logger.warning("Error scrapeando '{}' en '{}': {}", query, platform, e)
 
     # Deduplicar por título + empresa y filtrar inválidos
     seen = set()

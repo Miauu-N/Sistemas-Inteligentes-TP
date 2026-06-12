@@ -25,6 +25,7 @@ class CVAnalysisState(TypedDict, total=False):
     pdf_path: str  # Ruta al archivo PDF subido por el usuario
     platforms: list[str]  # Plataformas seleccionadas para buscar ofertas (ej: ['computrabajo', 'indeed'])
     is_rescan: bool  # Indica si es un re-escaneo de ofertas laborales sin subir nuevo CV
+    search_mode: str  # Modo de búsqueda: 'scraping' (web scraping con playwright) o 'serpapi' (Google Jobs API)
 
     # --- Nodo: intake ---
     raw_text: str  # Texto crudo extraído del PDF

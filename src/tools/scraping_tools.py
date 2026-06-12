@@ -127,7 +127,8 @@ async def _scrape_computrabajo(query: str, max_pages: int = 2) -> list[dict]:
                     )
 
                 except Exception as e:
-                    logger.warning("Error en página {}: {}", page_num, e)
+                    logger.warning("Error en página {}: {}, abortando páginas siguientes.", page_num, e)
+                    break
 
                 # Delay aleatorio entre páginas
                 if page_num < max_pages:
@@ -381,7 +382,8 @@ async def _scrape_indeed(query: str, max_pages: int = 1) -> list[dict]:
                     )
 
                 except Exception as e:
-                    logger.warning("Error en Indeed página {}: {}", page_num, e)
+                    logger.warning("Error en Indeed página {}: {}, abortando páginas siguientes.", page_num, e)
+                    break
 
                 if page_num < max_pages:
                     await asyncio.sleep(random.uniform(1.5, 3.0))

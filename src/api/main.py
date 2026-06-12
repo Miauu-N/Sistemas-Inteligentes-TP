@@ -42,6 +42,7 @@ jobs: Dict[str, Dict[str, Any]] = {}
 async def start_analysis(
     file: UploadFile = File(...),
     platforms: str = Form(default='["computrabajo"]'),
+    search_mode: str = Form(default="scraping"),
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -51,6 +52,12 @@ async def start_analysis(
     if not file.filename.endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Solo se permiten archivos PDF")
         
+    if search_mode == "serpapi" and not settings.serpapi_api_key:
+        raise HTTPException(
+            status_code=400,
+            detail="La búsqueda con SerpAPI no está disponible porque la API Key no ha sido configurada en el servidor."
+        )
+
     # Procesar las plataformas
     logger.info("Plataformas recibidas en la API: {}", platforms)
     try:
@@ -74,6 +81,7 @@ async def start_analysis(
         "user_id": current_user.id,
         "pdf_path": path,
         "platforms": parsed_platforms,
+        "search_mode": search_mode,
         "status": "pending",
         "result": None,
         "errors": []
@@ -109,6 +117,7 @@ async def stream_analysis(job_id: str):
             "errors": [],
             "retry_count": 0,
             "is_rescan": job.get("is_rescan", False),
+            "search_mode": job.get("search_mode", "scraping"),
         }
         if job.get("is_rescan"):
             initial_state["cv_data"] = job.get("cv_data", {})
@@ -316,6 +325,7 @@ async def get_latest_analysis(
 
 class RescanRequest(BaseModel):
     platforms: list[str] = ["computrabajo"]
+    search_mode: str = "scraping"
 
 @app.post("/api/analyze/rescan")
 async def start_rescan(
@@ -336,6 +346,12 @@ async def start_rescan(
     if not db_analysis or not db_analysis.parsed_skills:
         raise HTTPException(status_code=400, detail="No existe un análisis previo para re-escanear.")
 
+    if req.search_mode == "serpapi" and not settings.serpapi_api_key:
+        raise HTTPException(
+            status_code=400,
+            detail="La búsqueda con SerpAPI no está disponible porque la API Key no ha sido configurada en el servidor."
+        )
+
     job_id = str(uuid.uuid4())
     
     # El trabajo asíncrono tiene la bandera is_rescan=True y copia la info del CV
@@ -344,6 +360,7 @@ async def start_rescan(
         "is_rescan": True,
         "cv_data": db_analysis.parsed_skills,
         "platforms": req.platforms,
+        "search_mode": req.search_mode,
         "status": "pending",
         "result": None,
         "errors": []
