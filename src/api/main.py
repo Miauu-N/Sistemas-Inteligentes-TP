@@ -10,9 +10,14 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from sse_starlette.sse import EventSourceResponse
+from fastapi import Depends
 
 from src.graph.builder import cv_analysis_graph
 from src.tools.pdf_generator import generate_pdf_report
+from src.api.auth import get_current_user
+from src.db.models import User, CVAnalysis
+from src.db.database import AsyncSessionLocal, get_db
+from sqlalchemy.ext.asyncio import AsyncSession
 
 app = FastAPI(
     title="CV Analyzer API",
@@ -36,11 +41,12 @@ jobs: Dict[str, Dict[str, Any]] = {}
 @app.post("/api/analyze")
 async def start_analysis(
     file: UploadFile = File(...),
-    platforms: str = Form(default='["computrabajo"]')
+    platforms: str = Form(default='["computrabajo"]'),
+    current_user: User = Depends(get_current_user)
 ):
     """
-    Recibe un PDF, lo guarda temporalmente y devuelve un ID de trabajo (job_id) 
-    para suscribirse al stream de progreso.
+    Recibe un PDF, lo guarda temporalmente y devuelve un ID de trabajo (job_id).
+    Requiere autenticación JWT.
     """
     if not file.filename.endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Solo se permiten archivos PDF")
@@ -65,6 +71,7 @@ async def start_analysis(
         f.write(await file.read())
         
     jobs[job_id] = {
+        "user_id": current_user.id,
         "pdf_path": path,
         "platforms": parsed_platforms,
         "status": "pending",
@@ -155,6 +162,23 @@ async def stream_analysis(job_id: str):
                     report_dict = {**report_dict, "job_listings": final_state.get("job_listings", [])}
                 job["result"] = report_dict
                 
+                # Persistir en la Base de Datos
+                parsed_skills = final_state.get("parsed_skills", {})
+                cv_data = final_state.get("cv_data", {})
+                job_titles = cv_data.get("inferred_job_titles", [])
+                
+                async with AsyncSessionLocal() as session:
+
+                    db_analysis = CVAnalysis(
+                        id=job_id,
+                        user_id=job["user_id"],
+                        parsed_skills=parsed_skills,
+                        job_titles=job_titles,
+                        final_report=report_dict
+                    )
+                    session.add(db_analysis)
+                    await session.commit()
+                
                 yield {
                     "event": "complete",
                     "data": json.dumps({"status": "success"})
@@ -182,31 +206,45 @@ async def stream_analysis(job_id: str):
 @app.get("/api/report/{job_id}")
 async def get_report(job_id: str):
     """Obtener el reporte final estructurado en JSON."""
-    if job_id not in jobs:
-        raise HTTPException(status_code=404, detail="Trabajo no encontrado")
+    if job_id in jobs:
+        job = jobs[job_id]
+        if job["status"] == "error":
+            return {"status": "error", "errors": job["errors"]}
+        if job["status"] != "completed":
+            return {"status": job["status"], "message": "El análisis aún no ha terminado"}
+        return {"status": "completed", "report": job["result"]}
         
-    job = jobs[job_id]
-    
-    if job["status"] == "error":
-        return {"status": "error", "errors": job["errors"]}
-    
-    if job["status"] != "completed":
-        return {"status": job["status"], "message": "El análisis aún no ha terminado"}
-        
-    return {"status": "completed", "report": job["result"]}
+    # Si no está en memoria, buscar en la base de datos
+    from sqlalchemy.future import select
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(select(CVAnalysis).where(CVAnalysis.id == job_id))
+        db_analysis = result.scalars().first()
+        if db_analysis:
+            return {"status": "completed", "report": db_analysis.final_report}
+            
+    raise HTTPException(status_code=404, detail="Trabajo no encontrado")
 
 
 @app.get("/api/report/{job_id}/pdf")
 async def get_report_pdf(job_id: str):
     """Descargar el reporte final en formato PDF."""
-    if job_id not in jobs:
-        raise HTTPException(status_code=404, detail="Trabajo no encontrado")
-        
-    job = jobs[job_id]
-    if job["status"] != "completed":
-        raise HTTPException(status_code=400, detail="El reporte aún no está listo")
-        
-    report_data = job["result"]
+    report_data = None
+    
+    if job_id in jobs:
+        job = jobs[job_id]
+        if job["status"] == "completed":
+            report_data = job["result"]
+    else:
+        # Buscar en la base de datos
+        from sqlalchemy.future import select
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(select(CVAnalysis).where(CVAnalysis.id == job_id))
+            db_analysis = result.scalars().first()
+            if db_analysis:
+                report_data = db_analysis.final_report
+                
+    if not report_data:
+        raise HTTPException(status_code=404, detail="El reporte no existe o aún no está listo")
     pdf_path = os.path.join(tempfile.gettempdir(), f"report_{job_id}.pdf")
     
     try:
@@ -218,3 +256,31 @@ async def get_report_pdf(job_id: str):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generando PDF: {str(e)}")
+
+# --- Endpoints de Usuario ---
+
+@app.get("/api/users/me")
+async def get_user_profile(current_user: User = Depends(get_current_user)):
+    """Devuelve el perfil del usuario actual, incluyendo preferencias."""
+    return {
+        "id": current_user.id,
+        "email": current_user.email,
+        "email_notifications_enabled": current_user.email_notifications_enabled
+    }
+
+from pydantic import BaseModel
+class UserPreferences(BaseModel):
+    email_notifications_enabled: bool
+
+@app.put("/api/users/preferences")
+async def update_user_preferences(
+    prefs: UserPreferences,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Actualiza las preferencias de notificaciones del usuario."""
+    current_user.email_notifications_enabled = prefs.email_notifications_enabled
+    db.add(current_user)
+    await db.commit()
+    return {"status": "success", "email_notifications_enabled": current_user.email_notifications_enabled}
+

@@ -50,10 +50,45 @@ class Settings(BaseSettings):
         description="Nivel de logging"
     )
 
+    # --- NUEVOS PARÁMETROS FASE 6 ---
+    database_url: str = Field(
+        default="sqlite+aiosqlite:///./cv_analyzer.db",
+        description="URL de conexión a la base de datos"
+    )
+    auth0_domain: str = Field(
+        default="dev-e8l3n5ui627xcocw.us.auth0.com",
+        description="Dominio de Auth0"
+    )
+    auth0_audience: str = Field(
+        default="cv-analyzer-api",
+        description="Audience de Auth0"
+    )
+    smtp_server: str = Field(
+        default="smtp.gmail.com",
+        description="Servidor SMTP"
+    )
+    smtp_port: int = Field(
+        default=587,
+        description="Puerto SMTP"
+    )
+    smtp_username: str = Field(
+        default="",
+        description="Usuario SMTP"
+    )
+    smtp_password: str = Field(
+        default="",
+        description="Contraseña SMTP"
+    )
+    sender_email: str = Field(
+        default="",
+        description="Remitente de correos"
+    )
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",
         "case_sensitive": False,
+        "extra": "ignore"  # Ignorar extras para evitar ValidationErrors por otras variables de entorno locales
     }
 
 
