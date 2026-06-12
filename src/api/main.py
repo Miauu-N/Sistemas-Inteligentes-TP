@@ -18,6 +18,7 @@ from src.api.auth import get_current_user
 from src.db.models import User, CVAnalysis
 from src.db.database import AsyncSessionLocal, get_db
 from sqlalchemy.ext.asyncio import AsyncSession
+from src.config.settings import settings
 
 app = FastAPI(
     title="CV Analyzer API",
