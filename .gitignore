@@ -40,3 +40,6 @@ data/uploads/
 # Playwright
 playwright-report/
 test-results/
+skills-lock.json
+/.agents
+cv_analyzer.db
