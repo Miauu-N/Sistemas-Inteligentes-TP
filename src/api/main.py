@@ -104,11 +104,14 @@ async def stream_analysis(job_id: str):
         
     async def event_generator():
         initial_state = {
-            "pdf_path": job["pdf_path"],
+            "pdf_path": job.get("pdf_path", ""),
             "platforms": job.get("platforms", ["computrabajo"]),
             "errors": [],
             "retry_count": 0,
+            "is_rescan": job.get("is_rescan", False),
         }
+        if job.get("is_rescan"):
+            initial_state["cv_data"] = job.get("cv_data", {})
         
         try:
             job["status"] = "running"
@@ -163,8 +166,8 @@ async def stream_analysis(job_id: str):
                 job["result"] = report_dict
                 
                 # Persistir en la Base de Datos
-                parsed_skills = final_state.get("parsed_skills", {})
                 cv_data = final_state.get("cv_data", {})
+                parsed_skills = cv_data
                 job_titles = cv_data.get("inferred_job_titles", [])
                 
                 async with AsyncSessionLocal() as session:
@@ -195,7 +198,7 @@ async def stream_analysis(job_id: str):
         finally:
             # Limpiar archivo temporal al terminar
             try:
-                if os.path.exists(job["pdf_path"]):
+                if job.get("pdf_path") and os.path.exists(job["pdf_path"]):
                     os.unlink(job["pdf_path"])
             except OSError:
                 pass
@@ -283,4 +286,104 @@ async def update_user_preferences(
     db.add(current_user)
     await db.commit()
     return {"status": "success", "email_notifications_enabled": current_user.email_notifications_enabled}
+
+
+# --- Endpoints de Historial y Re-escaneo ---
+
+@app.get("/api/analysis/latest")
+async def get_latest_analysis(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Obtiene el análisis más reciente del usuario autenticado."""
+    from sqlalchemy.future import select
+    result = await db.execute(
+        select(CVAnalysis)
+        .where(CVAnalysis.user_id == current_user.id)
+        .order_by(CVAnalysis.created_at.desc())
+    )
+    db_analysis = result.scalars().first()
+    if not db_analysis:
+        return {"status": "not_found", "message": "No se encontró ningún análisis previo."}
+        
+    return {
+        "status": "completed",
+        "job_id": db_analysis.id,
+        "report": db_analysis.final_report,
+        "completed_recommendations": db_analysis.completed_recommendations or []
+    }
+
+
+class RescanRequest(BaseModel):
+    platforms: list[str] = ["computrabajo"]
+
+@app.post("/api/analyze/rescan")
+async def start_rescan(
+    req: RescanRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Inicia una nueva búsqueda de ofertas usando el CV ya analizado.
+    """
+    from sqlalchemy.future import select
+    result = await db.execute(
+        select(CVAnalysis)
+        .where(CVAnalysis.user_id == current_user.id)
+        .order_by(CVAnalysis.created_at.desc())
+    )
+    db_analysis = result.scalars().first()
+    if not db_analysis or not db_analysis.parsed_skills:
+        raise HTTPException(status_code=400, detail="No existe un análisis previo para re-escanear.")
+
+    job_id = str(uuid.uuid4())
+    
+    # El trabajo asíncrono tiene la bandera is_rescan=True y copia la info del CV
+    jobs[job_id] = {
+        "user_id": current_user.id,
+        "is_rescan": True,
+        "cv_data": db_analysis.parsed_skills,
+        "platforms": req.platforms,
+        "status": "pending",
+        "result": None,
+        "errors": []
+    }
+    
+    return {"job_id": job_id, "status": "pending"}
+
+
+class RecommendationUpdate(BaseModel):
+    index: int
+    completed: bool
+
+@app.patch("/api/analysis/{job_id}/recommendations")
+async def update_recommendation_status(
+    job_id: str,
+    update: RecommendationUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Marca o desmarca una recomendación (acción) como completada."""
+    from sqlalchemy.future import select
+    result = await db.execute(
+        select(CVAnalysis)
+        .where(CVAnalysis.id == job_id, CVAnalysis.user_id == current_user.id)
+    )
+    db_analysis = result.scalars().first()
+    if not db_analysis:
+        raise HTTPException(status_code=404, detail="Análisis no encontrado")
+        
+    completed = list(db_analysis.completed_recommendations or [])
+    if update.completed:
+        if update.index not in completed:
+            completed.append(update.index)
+    else:
+        if update.index in completed:
+            completed.remove(update.index)
+            
+    db_analysis.completed_recommendations = completed
+    db.add(db_analysis)
+    await db.commit()
+    
+    return {"status": "success", "completed_recommendations": db_analysis.completed_recommendations}
 

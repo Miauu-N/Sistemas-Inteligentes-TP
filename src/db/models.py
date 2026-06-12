@@ -29,6 +29,9 @@ class CVAnalysis(Base):
     job_titles: Mapped[list[str]] = mapped_column(JSON, default=list)
     final_report: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     
+    # Indices de las recomendaciones marcadas como completadas
+    completed_recommendations: Mapped[list[int] | None] = mapped_column(JSON, default=list, nullable=True)
+    
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=datetime.datetime.utcnow)
     
     # Relación de vuelta al usuario

@@ -24,6 +24,7 @@ class CVAnalysisState(TypedDict, total=False):
     # --- Entrada del usuario ---
     pdf_path: str  # Ruta al archivo PDF subido por el usuario
     platforms: list[str]  # Plataformas seleccionadas para buscar ofertas (ej: ['computrabajo', 'indeed'])
+    is_rescan: bool  # Indica si es un re-escaneo de ofertas laborales sin subir nuevo CV
 
     # --- Nodo: intake ---
     raw_text: str  # Texto crudo extraído del PDF

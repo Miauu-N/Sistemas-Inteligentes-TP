@@ -105,6 +105,86 @@ function App() {
     }
   }, [appState, jobId])
 
+  // Buscar análisis existente al iniciar sesión
+  useEffect(() => {
+    const checkExistingAnalysis = async () => {
+      if (isAuthenticated) {
+        try {
+          const token = await getAccessTokenSilently()
+          const res = await fetch(`${API_URL}/api/analysis/latest`, {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          })
+          if (!res.ok) throw new Error('Error al buscar análisis previo')
+          const data = await res.json()
+          if (data.status === 'completed') {
+            setJobId(data.job_id)
+            const report = {
+              ...data.report,
+              completed_recommendations: data.completed_recommendations || []
+            }
+            setReportData(report)
+            setAppState('completed')
+          }
+        } catch (err) {
+          console.error('Error checking latest analysis:', err)
+        }
+      }
+    }
+    checkExistingAnalysis()
+  }, [isAuthenticated])
+
+  const handleRescan = async (platforms) => {
+    setAppState('uploading')
+    setErrorMsg('')
+    try {
+      const token = await getAccessTokenSilently()
+      const res = await fetch(`${API_URL}/api/analyze/rescan`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ platforms: platforms || ['computrabajo'] })
+      })
+      if (!res.ok) {
+        const errData = await res.json()
+        throw new Error(errData.detail || 'Error al iniciar el re-escaneo')
+      }
+      const data = await res.json()
+      setJobId(data.job_id)
+      setProgressMsg('Iniciando re-escaneo de ofertas...')
+      setAppState('analyzing')
+    } catch (err) {
+      setErrorMsg(err.message)
+      setAppState('error')
+    }
+  }
+
+  const handleToggleRecommendation = async (index, completed) => {
+    try {
+      const token = await getAccessTokenSilently()
+      const res = await fetch(`${API_URL}/api/analysis/${jobId}/recommendations`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ index, completed })
+      })
+      if (!res.ok) throw new Error('Error al actualizar recomendación')
+      const data = await res.json()
+      
+      setReportData(prev => ({
+        ...prev,
+        completed_recommendations: data.completed_recommendations
+      }))
+    } catch (err) {
+      console.error('Error toggling recommendation:', err)
+    }
+  }
+
   const reset = () => {
     setAppState('idle')
     setJobId(null)
@@ -191,7 +271,13 @@ function App() {
         )}
 
         {appState === 'completed' && reportData && (
-          <Dashboard data={reportData} jobId={jobId} onReset={reset} />
+          <Dashboard 
+            data={reportData} 
+            jobId={jobId} 
+            onReset={reset} 
+            onRescan={handleRescan}
+            onToggleRecommendation={handleToggleRecommendation}
+          />
         )}
 
         {appState === 'error' && (

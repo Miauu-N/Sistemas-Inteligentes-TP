@@ -20,6 +20,12 @@ def extraction_node(state: CVAnalysisState) -> dict:
     """
     logger.info("=== NODO: extraction — Extracción de datos con Gemini ===")
 
+    if state.get("is_rescan"):
+        logger.info("Modo re-escaneo: Saltando extracción de datos con Gemini.")
+        return {
+            "current_step": "extraction",
+        }
+
     raw_text = state.get("raw_text", "")
     errors = list(state.get("errors", []))
     retry_count = state.get("retry_count", 0)

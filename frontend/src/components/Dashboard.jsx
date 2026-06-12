@@ -2,7 +2,7 @@ import { Download, RotateCcw, Target, Briefcase, AlertCircle, Lightbulb, CheckCi
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
-export default function Dashboard({ data, jobId, onReset }) {
+export default function Dashboard({ data, jobId, onReset, onRescan, onToggleRecommendation }) {
   const { 
     cv_summary, 
     matching_score, 
@@ -21,17 +21,28 @@ export default function Dashboard({ data, jobId, onReset }) {
     window.open(`${API_URL}/api/report/${jobId}/pdf`, '_blank')
   }
 
+  const handleRescanClick = () => {
+    const usedPlatforms = Array.from(new Set(job_listings?.map(j => j.source_platform).filter(Boolean)))
+    onRescan(usedPlatforms.length > 0 ? usedPlatforms : ['computrabajo'])
+  }
+
   return (
     <div className="w-full flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       
       {/* Header Actions */}
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
-        <button onClick={onReset} className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors">
-          <RotateCcw className="w-4 h-4" /> Nuevo análisis
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4 w-full">
+        <button onClick={onReset} className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors cursor-pointer text-sm font-semibold">
+          <RotateCcw className="w-4 h-4" /> Subir nuevo CV
         </button>
-        <button onClick={handleDownload} className="primary-btn flex items-center gap-2">
-          <Download className="w-4 h-4" /> Descargar PDF
-        </button>
+        
+        <div className="flex gap-3">
+          <button onClick={handleRescanClick} className="flex items-center gap-2 py-2 px-4 bg-slate-900 border border-slate-800 rounded-xl hover:bg-slate-850 hover:border-slate-700 text-white font-semibold transition-all text-sm cursor-pointer shadow-sm">
+            <RotateCcw className="w-4 h-4 text-blue-400" /> Re-escanear Vacantes
+          </button>
+          <button onClick={handleDownload} className="primary-btn flex items-center gap-2 text-sm">
+            <Download className="w-4 h-4" /> Descargar PDF
+          </button>
+        </div>
       </div>
 
       {/* Demo Mode / Mock Warning Banner */}
@@ -131,20 +142,44 @@ export default function Dashboard({ data, jobId, onReset }) {
             <Lightbulb className="text-yellow-400" /> Plan de Acción
           </h3>
           <div className="space-y-4">
-            {recommendations?.map((rec, i) => (
-              <div key={i} className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
-                <h4 className="font-bold text-blue-300 mb-2">{rec.title}</h4>
-                <p className="text-sm text-slate-300 mb-3">{rec.description}</p>
-                <div className="flex flex-wrap gap-2 text-xs">
-                  <span className="px-2 py-1 rounded bg-slate-700 text-slate-300">
-                    ⏱️ {rec.estimated_time}
-                  </span>
-                  <span className="px-2 py-1 rounded bg-slate-700 text-purple-300">
-                    🏷️ {rec.type}
-                  </span>
+            {recommendations?.map((rec, i) => {
+              const isCompleted = data.completed_recommendations?.includes(i) || false
+              return (
+                <div 
+                  key={i} 
+                  className={`p-4 rounded-xl border transition-all duration-300 ${
+                    isCompleted 
+                      ? 'bg-emerald-950/20 border-emerald-500/30 opacity-75' 
+                      : 'bg-slate-800/50 border-slate-700 hover:border-slate-600'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <input 
+                      type="checkbox" 
+                      checked={isCompleted}
+                      onChange={(e) => onToggleRecommendation(i, e.target.checked)}
+                      className="mt-1.5 w-4 h-4 rounded border-slate-700 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-slate-900 cursor-pointer accent-emerald-500"
+                    />
+                    <div className="flex-1">
+                      <h4 className={`font-bold mb-2 transition-all ${isCompleted ? 'text-emerald-400 line-through' : 'text-blue-300'}`}>
+                        {rec.title}
+                      </h4>
+                      <p className={`text-sm mb-3 transition-all ${isCompleted ? 'text-slate-400' : 'text-slate-300'}`}>
+                        {rec.description}
+                      </p>
+                      <div className="flex flex-wrap gap-2 text-xs">
+                        <span className="px-2 py-1 rounded bg-slate-700/50 text-slate-300">
+                          ⏱️ {rec.estimated_time}
+                        </span>
+                        <span className="px-2 py-1 rounded bg-slate-700/50 text-purple-300">
+                          🏷️ {rec.type}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
         

@@ -31,6 +31,9 @@ def route_after_intake(state: CVAnalysisState) -> str:
     Si hay errores en el estado (PDF inválido, sin texto), redirige al
     error_handler. De lo contrario, continúa con extraction.
     """
+    if state.get("is_rescan"):
+        return "extraction"
+
     errors = state.get("errors", [])
     raw_text = state.get("raw_text", "")
 
@@ -45,6 +48,9 @@ def route_after_extraction(state: CVAnalysisState) -> str:
 
     Si la extracción falló (cv_data vacío), redirige al error_handler.
     """
+    if state.get("is_rescan"):
+        return "job_search"
+
     cv_data = state.get("cv_data", {})
 
     if not cv_data:

@@ -20,6 +20,12 @@ def intake_node(state: CVAnalysisState) -> dict:
     """
     logger.info("=== NODO: intake — Validación y extracción de PDF ===")
 
+    if state.get("is_rescan"):
+        logger.info("Modo re-escaneo: Saltando validación y extracción de PDF.")
+        return {
+            "current_step": "intake",
+        }
+
     pdf_path = state.get("pdf_path", "")
     errors = list(state.get("errors", []))
 
