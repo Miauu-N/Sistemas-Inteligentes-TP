@@ -35,8 +35,8 @@ async def search_jobs_linkedin_async(query: str, max_pages: int = 1) -> list[Job
                 listings.append(JobListing(
                     title=raw.get("title", "Sin título"),
                     company=raw.get("company", "Empresa no especificada"),
-                    location=raw.get("location"),
-                    modality=raw.get("modality"),
+                    location=raw.get("location") or "Remoto",
+                    modality="remoto",
                     description=raw.get("description", ""),
                     source_url=raw.get("url", ""),
                     source_platform="linkedin",
@@ -56,8 +56,8 @@ async def search_jobs_indeed_async(query: str, max_pages: int = 1) -> list[JobLi
                 listings.append(JobListing(
                     title=raw.get("title", "Sin título"),
                     company=raw.get("company", "Empresa no especificada"),
-                    location=raw.get("location"),
-                    modality=raw.get("modality"),
+                    location=raw.get("location") or "Remoto",
+                    modality="remoto",
                     description=raw.get("description", ""),
                     source_url=raw.get("url", ""),
                     source_platform="indeed",
@@ -77,8 +77,8 @@ async def search_jobs_computrabajo_async(query: str, max_pages: int = 1) -> list
                 listings.append(JobListing(
                     title=raw.get("title", "Sin título"),
                     company=raw.get("company", "Empresa no especificada"),
-                    location=raw.get("location"),
-                    modality=raw.get("modality"),
+                    location=raw.get("location") or "Remoto",
+                    modality="remoto",
                     description=raw.get("description", ""),
                     source_url=raw.get("url", ""),
                     source_platform="computrabajo",
@@ -194,7 +194,8 @@ async def run_weekly_job_matcher():
                 continue
                 
             job_titles = latest_analysis.job_titles
-            search_query = " OR ".join(job_titles)
+            # Forzar ofertas remotas para cada título
+            search_query = " OR ".join([f"{title} remoto" for title in job_titles])
             
             # Ejecutar scrapers silenciosa y asíncronamente
             all_jobs = []

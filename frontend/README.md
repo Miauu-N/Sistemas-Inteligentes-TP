@@ -54,9 +54,9 @@ La aplicación se abrirá automáticamente en **`http://localhost:5173/`**.
     *   Gestiona los estados globales del análisis (`idle`, `uploading`, `analyzing`, `completed`, `error`).
     *   Controla el flujo de redirecciones si el usuario no ha iniciado sesión.
     *   Consume los eventos en tiempo real enviados por el backend (SSE) para actualizar la barra de progreso.
-*   **`components/UploadSection.jsx`:** Área drag-and-drop para arrastrar currículums en PDF con checkboxes estilizados para seleccionar los portales a scrapear.
+*   **`components/UploadSection.jsx`:** Área drag-and-drop para arrastrar currículums en PDF con selector premium para elegir el motor de búsqueda (Scraping Web con checkboxes de portales vs SerpAPI/Google Jobs).
 *   **`components/ProgressTracker.jsx`:** Barra de progreso fluida que muestra el paso actual de la IA.
-*   **`components/Dashboard.jsx`:** Layout interactivo estilo *bento-grid* para ver las métricas de alineación, fortalezas, brechas, plan de acción y vacantes recomendadas.
+*   **`components/Dashboard.jsx`:** Layout interactivo estilo *bento-grid* para ver las métricas de alineación, fortalezas, brechas, plan de acción interactivo (con checkboxes que persisten el estado completado en la base de datos) y vacantes recomendadas (con dos botones ágiles de re-escaneo: Scraping y SerpAPI).
 *   **`components/ProfileSettings.jsx`:** Panel de cuenta de usuario donde se muestra la sesión activa de Auth0 y el interruptor (Toggle) para habilitar/deshabilitar los boletines semanales de empleo.
 
 ---

@@ -12,7 +12,7 @@ CV Analyzer es un sistema multi-agente orquestado con **LangGraph** que automati
 
 1. **Recepción:** Recibe un CV en formato PDF a través de la API REST.
 2. **Extracción (LLM):** Extrae información estructurada (habilidades, tecnologías, experiencia, educación).
-3. **Búsqueda de Empleo:** Consulta ofertas laborales en tiempo real en múltiples portales seleccionables (Computrabajo, Indeed y LinkedIn).
+3. **Búsqueda de Empleo:** Consulta ofertas laborales en tiempo real ya sea mediante scraping directo en múltiples portales (Computrabajo, Indeed y LinkedIn) o de manera unificada mediante SerpAPI (Google Jobs).
 4. **Análisis de Requisitos:** Analiza qué competencias son más frecuentes en el mercado actual para ese rol.
 5. **Detección de Brechas:** Calcula el porcentaje de alineación y detecta habilidades faltantes.
 6. **Recomendaciones:** Genera un plan de acción personalizado.
@@ -23,11 +23,12 @@ CV Analyzer es un sistema multi-agente orquestado con **LangGraph** que automati
 ## ✨ Características Destacadas
 
 * **Autenticación Multi-Inquilino (Auth0):** Acceso seguro para usuarios a través del inicio de sesión único (Google o credenciales tradicionales) mediante Auth0.
-* **Persistencia Histórica (PostgreSQL):** Registro permanente del historial de análisis y perfiles de usuario. Si el servidor se reinicia, el historial de reportes y PDFs se recupera directamente de la base de datos de manera transparente.
+* **Persistencia Histórica (PostgreSQL):** Registro permanente del historial de análisis y perfiles de usuario. Al iniciar sesión, el sistema carga el CV del usuario de manera instantánea si ya existe un análisis previo, eliminando costos y demoras de re-análisis constante.
 * **Notificaciones de Empleo Semanales:** Script automatizado que busca ofertas personalizadas una vez por semana y envía un boletín HTML estilizado con las 10 mejores vacantes.
 * **Panel de Configuración de Notificaciones:** Interruptor (Toggle) interactivo en la cuenta del usuario para activar o desactivar la suscripción de correos automáticos semanales.
-* **Búsqueda Multi-Portal Seleccionable:** El usuario puede elegir y combinar en qué portales de empleo realizar la búsqueda de ofertas (**Computrabajo**, **Indeed** y/o **LinkedIn**) directamente desde los controles del frontend antes de lanzar el análisis.
-* **Manejo Inteligente de Anti-Bots (Modo Demo):** Si las solicitudes en tiempo real a portales protegidos (como Indeed o LinkedIn) fallan o son bloqueadas por protecciones de Cloudflare/Captcha, el sistema lo detecta e inyecta ofertas simuladas de referencia asociando el puesto y enlaces dinámicos del portal seleccionado. La interfaz despliega un banner explicativo tipo advertencia alertando sobre este estado.
+* **Búsqueda Flexible (Scraping vs SerpAPI):** El usuario puede elegir entre buscar ofertas mediante scraping web en múltiples portales (Computrabajo, Indeed, LinkedIn) o unificar todas las fuentes usando **SerpAPI (Google Jobs API)** para evitar bloqueos geográficos y de captcha en producción.
+* **Plan de Acción Interactivo:** Las recomendaciones generadas ahora son interactivas. El usuario puede ir marcando sus avances mediante un checklist que cambia el diseño de las tarjetas a completado y se persiste en tiempo real en la base de datos.
+* **Manejo Inteligente de Anti-Bots (Modo Demo):** Si el scraping tradicional falla o es bloqueado por Cloudflare/Captcha, el sistema inyecta ofertas de referencia simuladas con enlaces dinámicos, alertando visualmente al usuario con un banner.
 * **Actualizaciones en Tiempo Real (SSE):** Conectividad cliente-servidor nativa mediante Server-Sent Events para actualizar en vivo la barra de progreso de los agentes paso a paso.
 * **Descarga de Reporte PDF:** Generación integrada de informes PDF limpios listos para descargar y compartir.
 
@@ -91,20 +92,23 @@ cd Sistemas-Inteligentes-TP
    Edítalo y agrega tus variables (Gemini API Key, base de datos, credenciales Auth0 y SMTP de correos):
    ```env
    GOOGLE_API_KEY=tu_api_key_de_gemini
-   
+    
    # Conexión local SQLite
    DATABASE_URL=sqlite+aiosqlite:///./cv_analyzer.db
-   
+    
    # Configuración de Auth0
    AUTH0_DOMAIN=tu-tenant.auth0.com
    AUTH0_AUDIENCE=cv-analyzer-api
-   
+    
    # Configuración de Correo SMTP
    SMTP_SERVER=smtp.gmail.com
    SMTP_PORT=587
    SMTP_USERNAME=tu-correo@gmail.com
    SMTP_PASSWORD=tu-contraseña-de-aplicación
    SENDER_EMAIL=tu-correo@gmail.com
+    
+   # API Key de SerpAPI (Opcional, para Google Jobs)
+   SERPAPI_API_KEY=tu_api_key_de_serpapi
    ```
 
 5. Ejecutar las migraciones de Base de Datos locales:

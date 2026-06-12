@@ -67,11 +67,14 @@ def job_search_node(state: CVAnalysisState) -> dict:
     all_listings = []
     search_mode = state.get("search_mode", "scraping")
     
+    # Forzar búsquedas remotas agregando la palabra clave "remoto"
+    remote_queries = [f"{q} remoto" for q in search_queries[:3]]
+    
     if search_mode == "serpapi":
-        loc = cv_data.location if cv_data.location else "Argentina"
-        for query in search_queries[:3]:
+        for query in remote_queries:
             try:
-                listings = search_jobs_serpapi(query, location=loc)
+                # Buscar a nivel país para ampliar cobertura de vacantes remotas
+                listings = search_jobs_serpapi(query, location="Argentina")
                 all_listings.extend(listings)
             except Exception as e:
                 logger.error("Error buscando en SerpAPI para query '{}': {}", query, e)
@@ -79,7 +82,7 @@ def job_search_node(state: CVAnalysisState) -> dict:
         if not platforms:
             platforms = ["computrabajo"]
 
-        for query in search_queries[:3]:  # Limitar a 3 queries
+        for query in remote_queries:
             for platform in platforms:
                 try:
                     if platform == "computrabajo":
@@ -94,10 +97,6 @@ def job_search_node(state: CVAnalysisState) -> dict:
                         listings = search_jobs_linkedin(query, max_pages=1)
                         all_listings.extend(listings)
                         logger.info("LinkedIn Query '{}': {} resultados", query, len(listings))
-                    elif platform == "bumeran":
-                        listings = search_jobs_bumeran(query, max_pages=settings.max_search_pages)
-                        all_listings.extend(listings)
-                        logger.info("Bumeran Query '{}': {} resultados", query, len(listings))
                 except Exception as e:
                     logger.warning("Error scrapeando '{}' en '{}': {}", query, platform, e)
 
