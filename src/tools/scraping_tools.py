@@ -18,6 +18,38 @@ from src.config.settings import settings
 from src.models.job_models import JobListing
 
 
+def detect_modality(title: str | None, description: str | None, location: str | None, query: str = "") -> str:
+    """
+    Detecta la modalidad de una oferta laboral basado en palabras clave.
+    """
+    title_l = title.lower() if title else ""
+    desc_l = description.lower() if description else ""
+    loc_l = location.lower() if location else ""
+    query_l = query.lower() if query else ""
+    
+    # 1. Palabras clave para cada modalidad
+    remote_keywords = ["remoto", "remote", "teletrabajo", "home office", "home-office", "trabajo a distancia", "distancia"]
+    hybrid_keywords = ["hibrido", "híbrido", "hybrid", "mixto", "semipresencial"]
+    onsite_keywords = ["presencial", "on-site", "onsite", "en oficina", "in-office"]
+    
+    # 2. Detectar remoto
+    if any(k in title_l or k in loc_l or k in desc_l for k in remote_keywords):
+        return "remoto"
+    # 3. Detectar híbrido
+    if any(k in title_l or k in loc_l or k in desc_l for k in hybrid_keywords):
+        return "híbrido"
+    # 4. Detectar presencial
+    if any(k in title_l or k in loc_l or k in desc_l for k in onsite_keywords):
+        return "presencial"
+        
+    # 5. Si la query contenía remoto, asumimos remoto
+    if "remoto" in query_l or "remote" in query_l:
+        return "remoto"
+        
+    # 6. Fallback a presencial
+    return "presencial"
+
+
 async def _create_stealth_browser_and_context(p) -> tuple:
     """
     Crea un navegador y contexto configurados con proxy (si existe) y parámetros 
@@ -173,12 +205,16 @@ def search_jobs_computrabajo(query: str, max_pages: int = 2) -> list[JobListing]
     listings = []
     for raw in raw_results:
         try:
+            title = raw.get("title", "Sin título")
+            description = raw.get("description", "")
+            location = raw.get("location")
+            modality = detect_modality(title, description, location, query)
             listing = JobListing(
-                title=raw.get("title", "Sin título"),
+                title=title,
                 company=raw.get("company", "Empresa no especificada"),
-                location=raw.get("location") or "Remoto",
-                modality="remoto",
-                description=raw.get("description", ""),
+                location=location or ("Remoto" if modality == "remoto" else "Argentina"),
+                modality=modality,
+                description=description,
                 source_url=raw.get("url", ""),
                 source_platform="computrabajo",
             )
@@ -212,8 +248,8 @@ def get_mock_job_listings(job_title: str = "Desarrollador Python") -> list[JobLi
         JobListing(
             title=f"{job_title} Semi-Senior",
             company="TechCorp Argentina",
-            location="Remoto - Argentina",
-            modality="remoto",
+            location="Buenos Aires, Argentina",
+            modality="híbrido",
             description="Buscamos desarrollador Python con experiencia en Django/FastAPI, bases de datos SQL, y metodologías ágiles.",
             required_skills=["Python", "Django", "SQL", "Git", "API REST"],
             preferred_skills=["Docker", "AWS", "CI/CD", "Redis"],
@@ -225,7 +261,7 @@ def get_mock_job_listings(job_title: str = "Desarrollador Python") -> list[JobLi
         JobListing(
             title=f"{job_title} Senior",
             company="DataSoft SRL",
-            location="Remoto - Argentina",
+            location="Córdoba, Argentina",
             modality="remoto",
             description="Se requiere desarrollador senior Python para equipo de datos. Machine Learning, ETL pipelines y cloud computing.",
             required_skills=["Python", "Machine Learning", "SQL", "Pandas", "AWS"],
@@ -250,8 +286,8 @@ def get_mock_job_listings(job_title: str = "Desarrollador Python") -> list[JobLi
         JobListing(
             title="Data Engineer",
             company="FinanzasAI",
-            location="Remoto - Argentina",
-            modality="remoto",
+            location="Buenos Aires, Argentina",
+            modality="híbrido",
             description="Buscamos data engineer para construir pipelines de datos. Experiencia en Python, SQL, cloud y herramientas ETL.",
             required_skills=["Python", "SQL", "ETL", "AWS", "Airflow"],
             preferred_skills=["Spark", "Kafka", "dbt", "Terraform"],
@@ -262,8 +298,8 @@ def get_mock_job_listings(job_title: str = "Desarrollador Python") -> list[JobLi
         JobListing(
             title="Backend Developer Python",
             company="E-Commerce Plus",
-            location="Remoto - Argentina",
-            modality="remoto",
+            location="Rosario, Argentina",
+            modality="presencial",
             description="Empresa de e-commerce busca backend developer. FastAPI, PostgreSQL, Redis, testing automatizado.",
             required_skills=["Python", "FastAPI", "PostgreSQL", "Redis", "Testing"],
             preferred_skills=["Docker", "Kubernetes", "RabbitMQ", "Elasticsearch"],
@@ -275,7 +311,7 @@ def get_mock_job_listings(job_title: str = "Desarrollador Python") -> list[JobLi
         JobListing(
             title="DevOps / SRE Engineer",
             company="CloudNative SA",
-            location="Remoto - Argentina",
+            location="Buenos Aires, Argentina",
             modality="remoto",
             description="Buscamos DevOps/SRE con experiencia en infraestructura cloud, CI/CD, contenedores y automatización con Python.",
             required_skills=["Python", "Docker", "Kubernetes", "AWS", "CI/CD", "Linux"],
@@ -300,8 +336,8 @@ def get_mock_job_listings(job_title: str = "Desarrollador Python") -> list[JobLi
         JobListing(
             title=f"{job_title} Junior",
             company="Software Factory AR",
-            location="Remoto - Argentina",
-            modality="remoto",
+            location="Buenos Aires, Argentina",
+            modality="híbrido",
             description="Oportunidad para desarrolladores junior. Python, Git, SQL básico. Mentoring y capacitación incluida.",
             required_skills=["Python", "Git", "SQL"],
             preferred_skills=["Django", "HTML", "CSS", "JavaScript"],
@@ -415,12 +451,16 @@ def search_jobs_indeed(query: str, max_pages: int = 1) -> list[JobListing]:
     listings = []
     for raw in raw_results:
         try:
+            title = raw.get("title", "Sin título")
+            description = raw.get("description", "")
+            location = raw.get("location")
+            modality = detect_modality(title, description, location, query)
             listing = JobListing(
-                title=raw.get("title", "Sin título"),
+                title=title,
                 company=raw.get("company", "Empresa no especificada"),
-                location=raw.get("location") or "Remoto",
-                modality="remoto",
-                description=raw.get("description", ""),
+                location=location or ("Remoto" if modality == "remoto" else "Argentina"),
+                modality=modality,
+                description=description,
                 source_url=raw.get("url", ""),
                 source_platform="indeed",
             )
@@ -514,12 +554,16 @@ def search_jobs_linkedin(query: str, max_pages: int = 1) -> list[JobListing]:
     listings = []
     for raw in raw_results:
         try:
+            title = raw.get("title", "Sin título")
+            description = raw.get("description", "")
+            location = raw.get("location")
+            modality = detect_modality(title, description, location, query)
             listing = JobListing(
-                title=raw.get("title", "Sin título"),
+                title=title,
                 company=raw.get("company", "Empresa no especificada"),
-                location=raw.get("location") or "Remoto",
-                modality="remoto",
-                description=raw.get("description", ""),
+                location=location or ("Remoto" if modality == "remoto" else "Argentina"),
+                modality=modality,
+                description=description,
                 source_url=raw.get("url", ""),
                 source_platform="linkedin",
             )
@@ -607,12 +651,16 @@ def search_jobs_bumeran(query: str, max_pages: int = 1) -> list[JobListing]:
     listings = []
     for raw in raw_results:
         try:
+            title = raw.get("title", "Sin título")
+            description = raw.get("description", "")
+            location = raw.get("location")
+            modality = detect_modality(title, description, location, query)
             listing = JobListing(
-                title=raw.get("title", "Sin título"),
+                title=title,
                 company=raw.get("company", "Empresa no especificada"),
-                location=raw.get("location") or "Remoto",
-                modality="remoto",
-                description=raw.get("description", ""),
+                location=location or ("Remoto" if modality == "remoto" else "Argentina"),
+                modality=modality,
+                description=description,
                 source_url=raw.get("url", ""),
                 source_platform="bumeran",
             )

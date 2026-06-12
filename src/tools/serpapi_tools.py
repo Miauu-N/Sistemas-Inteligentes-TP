@@ -8,6 +8,7 @@ import json
 from loguru import logger
 from src.config.settings import settings
 from src.models.job_models import JobListing
+from src.tools.scraping_tools import detect_modality
 
 def search_jobs_serpapi(query: str, location: str = "Argentina") -> list[JobListing]:
     """
@@ -56,11 +57,12 @@ def search_jobs_serpapi(query: str, location: str = "Argentina") -> list[JobList
             if source_platform.startswith("via "):
                 source_platform = source_platform[4:]
                 
+            modality = detect_modality(title, description, location, query)
             listing = JobListing(
                 title=title,
                 company=company,
                 location=location,
-                modality="remoto",
+                modality=modality,
                 description=description,
                 source_url=source_url,
                 source_platform=source_platform,

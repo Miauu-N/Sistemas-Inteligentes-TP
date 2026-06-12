@@ -67,11 +67,15 @@ def job_search_node(state: CVAnalysisState) -> dict:
     all_listings = []
     search_mode = state.get("search_mode", "scraping")
     
-    # Forzar búsquedas remotas agregando la palabra clave "remoto"
-    remote_queries = [f"{q} remoto" for q in search_queries[:3]]
+    # Combinar búsquedas originales y remotas
+    queries_to_search = []
+    for q in search_queries[:3]:
+        queries_to_search.append(q)
+        if "remoto" not in q.lower() and "remote" not in q.lower():
+            queries_to_search.append(f"{q} remoto")
     
     if search_mode == "serpapi":
-        for query in remote_queries:
+        for query in queries_to_search:
             try:
                 # Buscar a nivel país para ampliar cobertura de vacantes remotas
                 listings = search_jobs_serpapi(query, location="Argentina")
@@ -82,7 +86,7 @@ def job_search_node(state: CVAnalysisState) -> dict:
         if not platforms:
             platforms = ["computrabajo"]
 
-        for query in remote_queries:
+        for query in queries_to_search:
             for platform in platforms:
                 try:
                     if platform == "computrabajo":

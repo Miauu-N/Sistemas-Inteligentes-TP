@@ -15,7 +15,7 @@ from loguru import logger
 from src.db.database import AsyncSessionLocal
 from src.db.models import User, CVAnalysis
 from src.models.job_models import JobListing
-from src.tools.scraping_tools import _scrape_computrabajo, _scrape_indeed, _scrape_linkedin
+from src.tools.scraping_tools import _scrape_computrabajo, _scrape_indeed, _scrape_linkedin, detect_modality
 from src.config.settings import settings
 
 # Email config
@@ -32,12 +32,16 @@ async def search_jobs_linkedin_async(query: str, max_pages: int = 1) -> list[Job
         raw_results = await _scrape_linkedin(query, max_pages)
         for raw in raw_results:
             try:
+                title = raw.get("title", "Sin título")
+                description = raw.get("description", "")
+                location = raw.get("location")
+                modality = detect_modality(title, description, location, query)
                 listings.append(JobListing(
-                    title=raw.get("title", "Sin título"),
+                    title=title,
                     company=raw.get("company", "Empresa no especificada"),
-                    location=raw.get("location") or "Remoto",
-                    modality="remoto",
-                    description=raw.get("description", ""),
+                    location=location or ("Remoto" if modality == "remoto" else "Argentina"),
+                    modality=modality,
+                    description=description,
                     source_url=raw.get("url", ""),
                     source_platform="linkedin",
                 ))
@@ -53,12 +57,16 @@ async def search_jobs_indeed_async(query: str, max_pages: int = 1) -> list[JobLi
         raw_results = await _scrape_indeed(query, max_pages)
         for raw in raw_results:
             try:
+                title = raw.get("title", "Sin título")
+                description = raw.get("description", "")
+                location = raw.get("location")
+                modality = detect_modality(title, description, location, query)
                 listings.append(JobListing(
-                    title=raw.get("title", "Sin título"),
+                    title=title,
                     company=raw.get("company", "Empresa no especificada"),
-                    location=raw.get("location") or "Remoto",
-                    modality="remoto",
-                    description=raw.get("description", ""),
+                    location=location or ("Remoto" if modality == "remoto" else "Argentina"),
+                    modality=modality,
+                    description=description,
                     source_url=raw.get("url", ""),
                     source_platform="indeed",
                 ))
@@ -74,12 +82,16 @@ async def search_jobs_computrabajo_async(query: str, max_pages: int = 1) -> list
         raw_results = await _scrape_computrabajo(query, max_pages)
         for raw in raw_results:
             try:
+                title = raw.get("title", "Sin título")
+                description = raw.get("description", "")
+                location = raw.get("location")
+                modality = detect_modality(title, description, location, query)
                 listings.append(JobListing(
-                    title=raw.get("title", "Sin título"),
+                    title=title,
                     company=raw.get("company", "Empresa no especificada"),
-                    location=raw.get("location") or "Remoto",
-                    modality="remoto",
-                    description=raw.get("description", ""),
+                    location=location or ("Remoto" if modality == "remoto" else "Argentina"),
+                    modality=modality,
+                    description=description,
                     source_url=raw.get("url", ""),
                     source_platform="computrabajo",
                 ))
@@ -194,8 +206,13 @@ async def run_weekly_job_matcher():
                 continue
                 
             job_titles = latest_analysis.job_titles
-            # Forzar ofertas remotas para cada título
-            search_query = " OR ".join([f"{title} remoto" for title in job_titles])
+            # Buscar títulos originales y también sus versiones remotas
+            search_terms = []
+            for title in job_titles:
+                search_terms.append(title)
+                if "remoto" not in title.lower() and "remote" not in title.lower():
+                    search_terms.append(f"{title} remoto")
+            search_query = " OR ".join(search_terms)
             
             # Ejecutar scrapers silenciosa y asíncronamente
             all_jobs = []
