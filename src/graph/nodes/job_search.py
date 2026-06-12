@@ -68,9 +68,10 @@ def job_search_node(state: CVAnalysisState) -> dict:
     search_mode = state.get("search_mode", "scraping")
     
     if search_mode == "serpapi":
+        loc = cv_data.location if cv_data.location else "Argentina"
         for query in search_queries[:3]:
             try:
-                listings = search_jobs_serpapi(query)
+                listings = search_jobs_serpapi(query, location=loc)
                 all_listings.extend(listings)
             except Exception as e:
                 logger.error("Error buscando en SerpAPI para query '{}': {}", query, e)

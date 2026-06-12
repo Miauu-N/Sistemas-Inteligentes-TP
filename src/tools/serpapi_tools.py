@@ -9,7 +9,7 @@ from loguru import logger
 from src.config.settings import settings
 from src.models.job_models import JobListing
 
-def search_jobs_serpapi(query: str) -> list[JobListing]:
+def search_jobs_serpapi(query: str, location: str = "Argentina") -> list[JobListing]:
     """
     Busca ofertas laborales usando Google Jobs a través de SerpAPI.
     """
@@ -17,11 +17,12 @@ def search_jobs_serpapi(query: str) -> list[JobListing]:
         logger.warning("Clave SerpAPI (serpapi_api_key) no configurada, cancelando búsqueda SerpAPI.")
         return []
 
-    logger.info("Buscando en SerpAPI (Google Jobs) para query: {}", query)
+    logger.info("Buscando en SerpAPI (Google Jobs) para query: {} en {}", query, location)
     
     params = {
         "engine": "google_jobs",
         "q": query,
+        "location": location,
         "api_key": settings.serpapi_api_key,
         "hl": "es",
         "gl": "ar"
