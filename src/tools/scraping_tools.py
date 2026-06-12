@@ -18,6 +18,41 @@ from src.config.settings import settings
 from src.models.job_models import JobListing
 
 
+async def _create_stealth_browser_and_context(p) -> tuple:
+    """
+    Crea un navegador y contexto configurados con proxy (si existe) y parámetros 
+    de sigilo (stealth) para mitigar bloqueos anti-bot.
+    """
+    launch_kwargs = {
+        "headless": True,
+        "args": ["--disable-dev-shm-usage", "--no-sandbox"]
+    }
+    
+    # Configurar proxy si se encuentra en los settings
+    if settings.proxy_server:
+        proxy = {"server": settings.proxy_server}
+        if settings.proxy_username:
+            proxy["username"] = settings.proxy_username
+            proxy["password"] = settings.proxy_password
+        launch_kwargs["proxy"] = proxy
+
+    browser = await p.chromium.launch(**launch_kwargs)
+    
+    # Crear un contexto "sigiloso" simulando un navegador real
+    context = await browser.new_context(
+        user_agent=(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/125.0.0.0 Safari/537.36"
+        ),
+        viewport={"width": 1280, "height": 720},
+        locale="es-AR",
+        timezone_id="America/Argentina/Buenos_Aires"
+    )
+    
+    return browser, context
+
+
 async def _scrape_computrabajo(query: str, max_pages: int = 2) -> list[dict]:
     """
     Scrapea Computrabajo Argentina buscando ofertas laborales.
@@ -42,14 +77,7 @@ async def _scrape_computrabajo(query: str, max_pages: int = 2) -> list[dict]:
 
     try:
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True, args=["--disable-dev-shm-usage", "--no-sandbox"])
-            context = await browser.new_context(
-                user_agent=(
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/125.0.0.0 Safari/537.36"
-                )
-            )
+            browser, context = await _create_stealth_browser_and_context(p)
             page = await context.new_page()
 
             for page_num in range(1, max_pages + 1):
@@ -301,14 +329,7 @@ async def _scrape_indeed(query: str, max_pages: int = 1) -> list[dict]:
 
     try:
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True, args=["--disable-dev-shm-usage", "--no-sandbox"])
-            context = await browser.new_context(
-                user_agent=(
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/125.0.0.0 Safari/537.36"
-                )
-            )
+            browser, context = await _create_stealth_browser_and_context(p)
             page = await context.new_page()
 
             for page_num in range(1, max_pages + 1):
@@ -426,14 +447,7 @@ async def _scrape_linkedin(query: str, max_pages: int = 1) -> list[dict]:
 
     try:
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True, args=["--disable-dev-shm-usage", "--no-sandbox"])
-            context = await browser.new_context(
-                user_agent=(
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/125.0.0.0 Safari/537.36"
-                )
-            )
+            browser, context = await _create_stealth_browser_and_context(p)
             page = await context.new_page()
             await page.goto(url, wait_until="domcontentloaded", timeout=12000)
 
@@ -532,14 +546,7 @@ async def _scrape_bumeran(query: str, max_pages: int = 1) -> list[dict]:
 
     try:
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True, args=["--disable-dev-shm-usage", "--no-sandbox"])
-            context = await browser.new_context(
-                user_agent=(
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/125.0.0.0 Safari/537.36"
-                )
-            )
+            browser, context = await _create_stealth_browser_and_context(p)
             page = await context.new_page()
             await page.goto(url, wait_until="domcontentloaded", timeout=12000)
 

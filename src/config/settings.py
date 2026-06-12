@@ -84,6 +84,20 @@ class Settings(BaseSettings):
         description="Remitente de correos"
     )
 
+    # --- Proxy Configuration for Scraping ---
+    proxy_server: str = Field(
+        default="",
+        description="URL del servidor proxy (ej: http://myproxy:8080)"
+    )
+    proxy_username: str = Field(
+        default="",
+        description="Usuario del proxy"
+    )
+    proxy_password: str = Field(
+        default="",
+        description="Contraseña del proxy"
+    )
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",
